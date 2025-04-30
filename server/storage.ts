@@ -12,11 +12,13 @@ export interface IStorage {
   // Message operations
   getMessages(conversationId: string): Promise<Message[]>;
   createMessage(message: InsertMessage): Promise<Message>;
+  deleteMessages(conversationId: string): Promise<void>;
   
   // Conversation operations
   getConversation(id: string): Promise<Conversation | undefined>;
   getConversations(): Promise<Conversation[]>;
   createConversation(conversation: InsertConversation): Promise<Conversation>;
+  deleteConversation(id: string): Promise<boolean>;
   updateConversationPersonality(id: string, personality: PersonalityType): Promise<Conversation | undefined>;
 }
 

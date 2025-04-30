@@ -1,13 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'wouter';
 import { useChat } from '@/lib/hooks';
+import { useAuth } from '@/hooks/useAuth';
 import ChatHistory from '@/components/ChatHistory';
 import ChatInputForm from '@/components/ChatInputForm';
 import ConnectionStatus from '@/components/ConnectionStatus';
+import ConversationSidebar from '@/components/ConversationSidebar';
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Settings } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, Settings, Menu, MessageSquare } from "lucide-react";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { nanoid } from 'nanoid';
 
 const Home: React.FC = () => {
+  const { user, login, signup, logout } = useAuth();
+  const [, navigate] = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [conversationId, setConversationId] = useState("default");
+  const [errorVisible, setErrorVisible] = useState(true);
+  
   const { 
     messages, 
     isLoading, 
@@ -15,16 +26,62 @@ const Home: React.FC = () => {
     isConnected,
     currentModel, 
     sendMessage 
-  } = useChat();
+  } = useChat(conversationId);
   
-  const [errorVisible, setErrorVisible] = useState(true);
-
+  // Handle creating a new conversation
+  const handleNewConversation = () => {
+    const newId = nanoid();
+    // In a real app, you'd also create this on the server
+    setConversationId(newId);
+  };
+  
+  // Handle selecting a conversation
+  const handleSelectConversation = (id: string) => {
+    setConversationId(id);
+  };
+  
+  // Handle sign in button click
+  const handleSignIn = () => {
+    navigate('/auth');
+  };
+  
   return (
     <div className="flex flex-col h-screen">
+      {/* Conversation Sidebar */}
+      <ConversationSidebar 
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        selectedConversationId={conversationId}
+        onSelectConversation={handleSelectConversation}
+        onNewConversation={handleNewConversation}
+        isSignedIn={!!user}
+        onSignIn={handleSignIn}
+        onSignOut={logout}
+      />
+      
       {/* Header */}
       <header className="bg-white border-b border-gray-200 py-4 px-6 shadow-sm">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarOpen(true)}
+              className="mr-2 md:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSidebarOpen(true)}
+              className="mr-4 hidden md:flex"
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              <span>Conversations</span>
+            </Button>
+            
             <h1 className="font-bold text-2xl text-primary">AI Chat Assistant</h1>
           </div>
           
