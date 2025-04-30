@@ -1,78 +1,75 @@
 import { MessageType } from "@shared/schema";
-import path from 'path';
-import fs from 'fs';
+import { InferenceClient } from "@huggingface/inference";
 
 // This file provides a fallback mechanism when the OpenAI API is unavailable
+// Using the Qwen model through the Novita API via Hugging Face Inference
 
-// Sample responses based on common chat patterns
-const commonResponses = {
-  greeting: [
-    "Hello! I'm a fallback AI assistant. How can I help you today?",
-    "Hi there! I'm running in fallback mode due to API limitations. What can I assist you with?",
-    "Greetings! I'm here to help, though I'm currently operating in a fallback capacity."
-  ],
-  farewell: [
-    "Goodbye! Feel free to come back if you have more questions.",
-    "Take care! Let me know if you need any more help later.",
-    "Have a great day! I'll be here if you need assistance in the future."
-  ],
-  thankYou: [
-    "You're welcome! Is there anything else I can help with?",
-    "Happy to assist! Let me know if you have other questions.",
-    "My pleasure! I'm here if you need more information."
-  ],
-  question: [
-    "That's an interesting question. In fallback mode, I have limited capabilities, but I'd be happy to try my best to assist you.",
-    "Great question! I'm currently operating in fallback mode due to API limitations, so my responses are somewhat limited.",
-    "I wish I could provide a more detailed answer, but I'm currently in fallback mode due to API constraints."
-  ],
-  default: [
-    "I understand you're looking for information. Currently, I'm operating in fallback mode due to API limitations.",
-    "I appreciate your message. Right now, I'm running in a fallback capacity since the main AI service is unavailable.",
-    "Thank you for your input. I'm currently in fallback mode, which means my responses are more limited than usual."
-  ]
-};
+// Initialize the Hugging Face client with the Novita API key
+const novitaApiKey = process.env.NOVITA_API_KEY || '';
+const huggingFaceClient = new InferenceClient(novitaApiKey);
 
-// Function to determine message intent based on content
-function determineIntent(content: string): keyof typeof commonResponses {
-  const lowerContent = content.toLowerCase();
+// Qwen model configuration
+const QWEN_MODEL = "Qwen/Qwen3-235B-A22B";
+const MAX_TOKENS = 512;
+
+// Convert our message format to the format expected by the Hugging Face API
+function convertMessages(messages: MessageType[]): Array<{role: string, content: string}> {
+  // Filter out system messages as they may not be supported in the same way
+  const compatibleMessages = messages.filter(msg => msg.role !== 'system');
   
-  if (lowerContent.includes('hello') || lowerContent.includes('hi ') || lowerContent.includes('hey') || lowerContent.match(/^hi$/)) {
-    return 'greeting';
-  } else if (lowerContent.includes('bye') || lowerContent.includes('goodbye') || lowerContent.includes('see you')) {
-    return 'farewell';
-  } else if (lowerContent.includes('thank') || lowerContent.includes('thanks') || lowerContent.includes('appreciate')) {
-    return 'thankYou';
-  } else if (lowerContent.includes('?') || lowerContent.includes('what') || lowerContent.includes('how') || 
-            lowerContent.includes('why') || lowerContent.includes('when') || lowerContent.includes('where')) {
-    return 'question';
-  } else {
-    return 'default';
+  // If no messages are left, add a default user message
+  if (compatibleMessages.length === 0) {
+    return [{
+      role: "user",
+      content: "Hello, can you introduce yourself?"
+    }];
   }
+  
+  // Make sure the last message is from the user
+  const lastMessage = compatibleMessages[compatibleMessages.length - 1];
+  if (lastMessage.role !== 'user') {
+    // If the last message isn't from a user, add a generic user query
+    compatibleMessages.push({
+      role: "user",
+      content: "Can you help me with this?"
+    });
+  }
+  
+  return compatibleMessages.map(msg => ({
+    role: msg.role,
+    content: msg.content
+  }));
 }
 
-// Function to get a random response based on intent
-function getRandomResponse(intent: keyof typeof commonResponses): string {
-  const responses = commonResponses[intent];
-  const randomIndex = Math.floor(Math.random() * responses.length);
-  return responses[randomIndex];
-}
-
-// Main function to generate a fallback chat response
+// Main function to generate a fallback chat response using Qwen
 export async function generateFallbackResponse(messages: MessageType[]): Promise<string> {
-  // Get the most recent user message
-  const lastUserMessage = [...messages].reverse().find(msg => msg.role === 'user');
-  
-  if (!lastUserMessage) {
-    return commonResponses.greeting[0]; // Default greeting if no user message found
+  try {
+    console.log("Generating fallback response using Qwen model");
+    
+    // Convert messages to the format expected by the Hugging Face API
+    const formattedMessages = convertMessages(messages);
+    
+    // Make the API call to the Qwen model via Novita
+    const response = await huggingFaceClient.chatCompletion({
+      provider: "novita",
+      model: QWEN_MODEL,
+      messages: formattedMessages,
+      max_tokens: MAX_TOKENS,
+    });
+    
+    // Extract and return the generated text
+    if (response.choices && response.choices.length > 0 && response.choices[0].message) {
+      // Add a note that this is using the fallback model
+      return `${response.choices[0].message.content}\n\n(Note: I'm currently operating in fallback mode using the Qwen model because the OpenAI API is unavailable)`;
+    } else {
+      throw new Error("No valid response from Qwen model");
+    }
+  } catch (error) {
+    console.error("Error generating response with Qwen model:", error);
+    
+    // If the Qwen model fails, return a simple fallback message
+    return "I apologize, but I'm currently experiencing technical difficulties with both primary and fallback AI services. Please try again later.";
   }
-  
-  // Determine intent and get appropriate response
-  const intent = determineIntent(lastUserMessage.content);
-  const response = getRandomResponse(intent);
-  
-  // Add disclaimer about fallback mode
-  return `${response}\n\n(Note: I'm currently operating in fallback mode because the OpenAI API is unavailable)`;
 }
 
 // Check if we can use the OpenAI API
@@ -84,6 +81,17 @@ export async function canUseOpenAI(): Promise<boolean> {
     return Boolean(apiKey && apiKey.startsWith('sk-') && apiKey.length > 20);
   } catch (error) {
     console.error("Error checking OpenAI API availability:", error);
+    return false;
+  }
+}
+
+// Check if we can use the Qwen model via Novita
+export async function canUseQwen(): Promise<boolean> {
+  try {
+    // Check if the Novita API key exists
+    return Boolean(novitaApiKey && novitaApiKey.length > 0);
+  } catch (error) {
+    console.error("Error checking Qwen availability:", error);
     return false;
   }
 }

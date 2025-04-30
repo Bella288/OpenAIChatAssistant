@@ -1,6 +1,50 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { apiRequest } from './queryClient';
-import { Message, ChatResponse } from './types';
+import { Message, ChatResponse, ModelStatus } from './types';
+
+// Hook for fetching model status
+export function useModelStatus() {
+  const [modelStatus, setModelStatus] = useState<ModelStatus>({
+    model: 'openai',
+    isOpenAIAvailable: true,
+    isQwenAvailable: true,
+    lastChecked: new Date()
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const fetchModelStatus = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/model-status');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch model status');
+      }
+      
+      const data = await response.json() as ModelStatus;
+      setModelStatus(data);
+    } catch (error) {
+      console.error('Error fetching model status:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+  
+  useEffect(() => {
+    fetchModelStatus();
+    
+    // Refresh model status every 5 minutes
+    const interval = setInterval(fetchModelStatus, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, [fetchModelStatus]);
+  
+  return {
+    modelStatus,
+    isLoading,
+    refetch: fetchModelStatus
+  };
+}
 
 // Hook for managing chat state
 export function useChat(initialConversationId = "default") {
@@ -13,6 +57,7 @@ export function useChat(initialConversationId = "default") {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState(initialConversationId);
+  const [currentModel, setCurrentModel] = useState<'openai' | 'qwen' | 'unavailable'>('openai');
 
   // Load message history for a conversation
   const loadMessages = useCallback(async (convId: string) => {
@@ -83,12 +128,17 @@ export function useChat(initialConversationId = "default") {
       // Add the assistant's response to state
       setMessages(prev => [...prev, data.message]);
       
+      // Update current model if provided
+      if (data.modelInfo && data.modelInfo.model) {
+        setCurrentModel(data.modelInfo.model as 'openai' | 'qwen' | 'unavailable');
+      }
+      
     } catch (err: any) {
       let errorMessage = err.message || 'Failed to send message';
       
       // Check if it's a quota exceeded error and provide a more friendly message
       if (errorMessage.includes('quota exceeded') || errorMessage.includes('insufficient_quota')) {
-        errorMessage = "The OpenAI API quota has been exceeded. This often happens with free accounts. Please check your OpenAI account billing details or try again later.";
+        errorMessage = "The OpenAI API quota has been exceeded. This often happens with free accounts. The system will attempt to use the Qwen fallback model.";
       }
       
       setError(errorMessage);
@@ -136,6 +186,7 @@ export function useChat(initialConversationId = "default") {
     error,
     conversationId,
     isConnected,
+    currentModel,
     sendMessage,
     clearConversation,
     loadMessages,

@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { generateChatResponse } from "./openai";
+import { canUseOpenAI, canUseQwen } from "./fallbackChat";
 import { 
   messageSchema, 
   conversationSchema, 
@@ -11,6 +12,46 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { nanoid } from "nanoid";
+
+// Track the current model in use
+let currentModelStatus = {
+  model: 'openai',
+  isOpenAIAvailable: true,
+  isQwenAvailable: true,
+  lastChecked: new Date()
+};
+
+// Function to check and update model availability status
+async function updateModelStatus() {
+  try {
+    const isOpenAIAvailable = await canUseOpenAI();
+    const isQwenAvailable = await canUseQwen();
+    
+    // Determine current model based on availability
+    let model = 'unavailable';
+    if (isOpenAIAvailable) {
+      model = 'openai';
+    } else if (isQwenAvailable) {
+      model = 'qwen';
+    }
+    
+    currentModelStatus = {
+      model,
+      isOpenAIAvailable,
+      isQwenAvailable,
+      lastChecked: new Date()
+    };
+    
+    console.log(`Updated model status: ${model} (OpenAI: ${isOpenAIAvailable}, Qwen: ${isQwenAvailable})`);
+    return currentModelStatus;
+  } catch (error) {
+    console.error("Error updating model status:", error);
+    return currentModelStatus;
+  }
+}
+
+// Initialize model status
+updateModelStatus();
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get all conversations
@@ -66,6 +107,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Send a message and get AI response
   app.post("/api/chat", async (req: Request, res: Response) => {
     try {
+      // Update model status before processing
+      await updateModelStatus();
+      
+      // Check if any AI model is available
+      if (currentModelStatus.model === 'unavailable') {
+        return res.status(503).json({ 
+          message: "All AI models are currently unavailable. Please check your API keys." 
+        });
+      }
+      
       // Validate incoming data
       const result = conversationSchema.safeParse(req.body);
       if (!result.success) {
@@ -103,10 +154,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conversationId
       });
 
-      // Return the AI response
+      // Return the AI response with model info
       res.json({ 
         message: savedMessage,
-        conversationId 
+        conversationId,
+        modelInfo: {
+          model: currentModelStatus.model,
+          isFallback: currentModelStatus.model !== 'openai'
+        }
       });
     } catch (error: any) {
       console.error("Chat API error:", error);
@@ -114,6 +169,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: error.message || "Failed to process chat message." 
       });
     }
+  });
+  
+  // Get current model status
+  app.get("/api/model-status", async (_req: Request, res: Response) => {
+    try {
+      // If it's been more than 5 minutes since last check, update status
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      if (currentModelStatus.lastChecked < fiveMinutesAgo) {
+        await updateModelStatus();
+      }
+      
+      return res.json(currentModelStatus);
+    } catch (error) {
+      console.error("Error getting model status:", error);
+      return res.status(500).json({ message: "Failed to get model status" });
+    }
+  });
+
+  // Health check endpoint
+  app.get("/api/health", (_req: Request, res: Response) => {
+    return res.json({ status: "ok" });
   });
 
   const httpServer = createServer(app);
