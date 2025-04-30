@@ -27,17 +27,32 @@ export interface ChatInputFormProps {
 export interface ChatHistoryProps {
   messages: Message[];
   isLoading: boolean;
+  currentModel?: 'openai' | 'qwen' | 'unavailable';
 }
 
 export interface ConnectionStatusProps {
   isConnected: boolean;
+  currentModel?: 'openai' | 'qwen' | 'unavailable';
 }
 
 export interface TypingIndicatorProps {
   isVisible: boolean;
 }
 
+export interface ModelStatus {
+  model: 'openai' | 'qwen' | 'unavailable';
+  isOpenAIAvailable: boolean;
+  isQwenAvailable: boolean;
+  lastChecked: Date;
+}
+
+export interface ModelInfo {
+  model: 'openai' | 'qwen' | 'unavailable';
+  isFallback: boolean;
+}
+
 export interface ChatResponse {
   message: Message;
   conversationId: string;
+  modelInfo?: ModelInfo;
 }
