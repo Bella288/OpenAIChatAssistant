@@ -52,9 +52,22 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
           (currentModel === 'qwen' || isMessageFallback);
         
         // Clean up fallback message for display
-        const displayContent = isAssistantFallbackMessage 
+        let displayContent = isAssistantFallbackMessage 
           ? message.content.replace(/\n\n\(Note: I'm currently operating in fallback mode.*\)$/, '') 
           : message.content;
+          
+        // Remove any thinking process sections for Qwen responses
+        if (isAssistantFallbackMessage) {
+          // Remove <think> tags and their content
+          displayContent = displayContent.replace(/<think>[\s\S]*?<\/think>/g, '');
+          
+          // Remove any other XML-like tags
+          displayContent = displayContent.replace(/<[^>]*>/g, '');
+          
+          // Clean up any excessive whitespace
+          displayContent = displayContent.replace(/^\s+|\s+$/g, '');
+          displayContent = displayContent.replace(/\n{3,}/g, '\n\n');
+        }
           
         return (
           <div 
