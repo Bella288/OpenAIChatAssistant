@@ -189,6 +189,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete a conversation
+  app.delete("/api/conversations/:id", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      
+      // Don't allow deleting the default conversation
+      if (id === "default") {
+        return res.status(400).json({ message: "Cannot delete the default conversation" });
+      }
+      
+      // Check if conversation exists
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Delete the conversation
+      const success = await storage.deleteConversation(id);
+      
+      if (success) {
+        res.status(200).json({ message: "Conversation deleted successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to delete conversation" });
+      }
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+      res.status(500).json({ message: "Server error deleting conversation" });
+    }
+  });
+  
   // Update conversation title
   app.patch("/api/conversations/:id/title", async (req: Request, res: Response) => {
     try {

@@ -62,6 +62,18 @@ export class MemStorage implements IStorage {
     this.messages.set(id, message);
     return message;
   }
+  
+  async deleteMessages(conversationId: string): Promise<void> {
+    // Get all message IDs for this conversation
+    const messageIds = Array.from(this.messages.entries())
+      .filter(([_id, message]) => message.conversationId === conversationId)
+      .map(([id, _message]) => id);
+    
+    // Delete each message
+    for (const id of messageIds) {
+      this.messages.delete(id);
+    }
+  }
 
   // Conversation operations
   async getConversation(id: string): Promise<Conversation | undefined> {
@@ -83,6 +95,25 @@ export class MemStorage implements IStorage {
     };
     this.conversations.set(conversation.id, newConversation);
     return newConversation;
+  }
+  
+  async deleteConversation(id: string): Promise<boolean> {
+    // Check if conversation exists
+    if (!this.conversations.has(id)) {
+      return false;
+    }
+    
+    // Don't allow deleting the default conversation
+    if (id === "default") {
+      return false;
+    }
+    
+    // Delete all messages in the conversation first
+    await this.deleteMessages(id);
+    
+    // Delete the conversation
+    this.conversations.delete(id);
+    return true;
   }
   
   async updateConversationPersonality(id: string, personality: PersonalityType): Promise<Conversation | undefined> {
