@@ -3,12 +3,14 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { generateChatResponse } from "./openai";
 import { canUseOpenAI, canUseQwen } from "./fallbackChat";
+import { getPersonalityConfig } from "./personalities";
 import { 
   messageSchema, 
   conversationSchema, 
   insertMessageSchema, 
   insertConversationSchema,
-  messageRoleSchema
+  messageRoleSchema,
+  personalityTypeSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { nanoid } from "nanoid";
@@ -184,6 +186,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting model status:", error);
       return res.status(500).json({ message: "Failed to get model status" });
+    }
+  });
+
+  // Update conversation title
+  app.patch("/api/conversations/:id/title", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { title } = req.body;
+      
+      // Validate title
+      if (!title || typeof title !== 'string' || title.trim().length === 0) {
+        return res.status(400).json({ message: "Valid title is required" });
+      }
+      
+      // Get the conversation
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Update the conversation
+      const updatedConversation = await storage.createConversation({
+        ...conversation,
+        title: title.trim()
+      });
+      
+      res.json(updatedConversation);
+    } catch (error) {
+      console.error("Error updating conversation title:", error);
+      res.status(500).json({ message: "Failed to update conversation title" });
+    }
+  });
+  
+  // Update conversation personality
+  app.patch("/api/conversations/:id/personality", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { personality } = req.body;
+      
+      // Validate personality
+      const result = personalityTypeSchema.safeParse(personality);
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Invalid personality type",
+          validOptions: personalityTypeSchema.options
+        });
+      }
+      
+      // Get the conversation
+      const conversation = await storage.getConversation(id);
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Update the conversation personality
+      const updatedConversation = await storage.updateConversationPersonality(id, result.data);
+      
+      // Return the updated conversation with personality details
+      const personalityConfig = getPersonalityConfig(result.data);
+      
+      res.json({
+        ...updatedConversation,
+        personalityConfig: {
+          name: personalityConfig.name,
+          description: personalityConfig.description,
+          emoji: personalityConfig.emoji
+        }
+      });
+    } catch (error) {
+      console.error("Error updating conversation personality:", error);
+      res.status(500).json({ message: "Failed to update conversation personality" });
+    }
+  });
+  
+  // Get available personalities
+  app.get("/api/personalities", async (_req: Request, res: Response) => {
+    try {
+      // Get all personality types from the schema
+      const personalityTypes = personalityTypeSchema.options;
+      
+      // Map to include details for each personality
+      const personalities = personalityTypes.map(type => {
+        const config = getPersonalityConfig(type);
+        return {
+          id: type,
+          name: config.name,
+          description: config.description,
+          emoji: config.emoji
+        };
+      });
+      
+      res.json(personalities);
+    } catch (error) {
+      console.error("Error fetching personalities:", error);
+      res.status(500).json({ message: "Failed to fetch personalities" });
     }
   });
 

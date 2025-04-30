@@ -3,6 +3,7 @@ import {
   type InsertMessage, 
   type Conversation, 
   type InsertConversation,
+  PersonalityType,
   messageRoleSchema
 } from "@shared/schema";
 
@@ -16,6 +17,7 @@ export interface IStorage {
   getConversation(id: string): Promise<Conversation | undefined>;
   getConversations(): Promise<Conversation[]>;
   createConversation(conversation: InsertConversation): Promise<Conversation>;
+  updateConversationPersonality(id: string, personality: PersonalityType): Promise<Conversation | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -32,7 +34,8 @@ export class MemStorage implements IStorage {
     const defaultConversation: Conversation = {
       id: "default",
       title: "New Conversation",
-      createdAt: new Date()
+      createdAt: new Date(),
+      personality: "default"
     };
     
     this.conversations.set(defaultConversation.id, defaultConversation);
@@ -73,10 +76,26 @@ export class MemStorage implements IStorage {
   async createConversation(conversation: InsertConversation): Promise<Conversation> {
     const newConversation: Conversation = {
       ...conversation,
+      personality: conversation.personality || "default",
       createdAt: new Date()
     };
     this.conversations.set(conversation.id, newConversation);
     return newConversation;
+  }
+  
+  async updateConversationPersonality(id: string, personality: PersonalityType): Promise<Conversation | undefined> {
+    const conversation = this.conversations.get(id);
+    if (!conversation) {
+      return undefined;
+    }
+    
+    const updatedConversation = {
+      ...conversation,
+      personality
+    };
+    
+    this.conversations.set(id, updatedConversation);
+    return updatedConversation;
   }
 }
 

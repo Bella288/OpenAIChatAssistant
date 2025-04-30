@@ -34,16 +34,30 @@ export const insertMessageSchema = createInsertSchema(messages).pick({
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
 
+// Define the personality types
+export const personalityTypeSchema = z.enum([
+  "default",
+  "professional", 
+  "friendly", 
+  "expert", 
+  "poetic", 
+  "concise"
+]);
+
+export type PersonalityType = z.infer<typeof personalityTypeSchema>;
+
 // Conversation model to group messages
 export const conversations = pgTable("conversations", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  personality: text("personality").default("default").notNull(),
 });
 
 export const insertConversationSchema = createInsertSchema(conversations).pick({
   id: true,
   title: true,
+  personality: true,
 });
 
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
@@ -64,6 +78,8 @@ export type MessageType = z.infer<typeof messageSchema>;
 // Conversation message format for OpenAI
 export const conversationSchema = z.object({
   messages: z.array(messageSchema),
+  personality: personalityTypeSchema.optional().default("default"),
+  conversationId: z.string().optional()
 });
 
 export type ConversationType = z.infer<typeof conversationSchema>;
