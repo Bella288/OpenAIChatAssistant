@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useChat } from '@/lib/hooks';
 import ChatHistory from '@/components/ChatHistory';
 import ChatInputForm from '@/components/ChatInputForm';
 import ConnectionStatus from '@/components/ConnectionStatus';
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Settings } from "lucide-react";
+import { AlertCircle, Settings, AlertTriangle } from "lucide-react";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 
 const Home: React.FC = () => {
   const { 
@@ -17,13 +18,39 @@ const Home: React.FC = () => {
   } = useChat();
   
   const [errorVisible, setErrorVisible] = useState(true);
+  
+  // Check if we're in fallback mode by looking for the indicator in messages
+  const isFallbackMode = messages.some(message => 
+    message.role === 'assistant' && 
+    message.content.includes('fallback mode')
+  );
 
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 py-4 px-6 shadow-sm">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <h1 className="font-bold text-2xl text-primary">AI Chat Assistant</h1>
+          <div className="flex items-center">
+            <h1 className="font-bold text-2xl text-primary">AI Chat Assistant</h1>
+            
+            {/* Fallback mode indicator */}
+            {isFallbackMode && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="outline" className="ml-2 bg-yellow-50 text-yellow-800 border-yellow-300 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3 text-yellow-600" />
+                      Fallback Mode
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>OpenAI API is unavailable. Using built-in fallback responses instead.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+          
           <div className="flex items-center space-x-2">
             <ConnectionStatus isConnected={isConnected} />
             
