@@ -84,7 +84,14 @@ export function useChat(initialConversationId = "default") {
       setMessages(prev => [...prev, data.message]);
       
     } catch (err: any) {
-      setError(err.message || 'Failed to send message');
+      let errorMessage = err.message || 'Failed to send message';
+      
+      // Check if it's a quota exceeded error and provide a more friendly message
+      if (errorMessage.includes('quota exceeded') || errorMessage.includes('insufficient_quota')) {
+        errorMessage = "The OpenAI API quota has been exceeded. This often happens with free accounts. Please check your OpenAI account billing details or try again later.";
+      }
+      
+      setError(errorMessage);
       console.error('Error sending message:', err);
     } finally {
       setIsLoading(false);

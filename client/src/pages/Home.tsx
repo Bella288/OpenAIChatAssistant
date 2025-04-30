@@ -50,15 +50,24 @@ const Home: React.FC = () => {
       <main className="flex-1 overflow-hidden max-w-5xl w-full mx-auto px-4 sm:px-6 py-4">
         {/* Error message */}
         {error && errorVisible && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertCircle className="h-4 w-4" />
+          <Alert variant="destructive" className="mb-4 shadow-lg border-l-4 border-red-600">
+            <AlertCircle className="h-4 w-4 mr-2" />
             <AlertDescription className="flex justify-between items-center">
-              <span>{error}</span>
+              <div className="flex-1">
+                <p className="font-medium text-red-800">{error}</p>
+                {error.includes('API quota') && (
+                  <p className="text-sm mt-1 text-gray-700">
+                    This usually means the OpenAI API key has reached its limit or doesn't have a payment method associated with it.
+                    Visit <a href="https://platform.openai.com/account/billing" className="underline text-blue-600 hover:text-blue-800" target="_blank" rel="noopener noreferrer">OpenAI Billing</a> to resolve this issue.
+                  </p>
+                )}
+              </div>
               <button 
                 onClick={() => setErrorVisible(false)}
-                className="text-foreground hover:text-foreground/80"
+                className="ml-2 text-foreground hover:text-foreground/80 p-1 flex-shrink-0"
+                aria-label="Dismiss"
               >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>

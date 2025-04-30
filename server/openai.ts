@@ -39,11 +39,15 @@ export async function generateChatResponse(messages: MessageType[]): Promise<str
       // API returned an error response
       const status = error.response.status;
       if (status === 429) {
-        throw new Error("Rate limit exceeded. Please try again later.");
+        if (error.code === 'insufficient_quota') {
+          throw new Error("OpenAI API quota exceeded. Your account may need a valid payment method or has reached its limit.");
+        } else {
+          throw new Error("Rate limit exceeded. Please try again later.");
+        }
       } else if (status === 401) {
         throw new Error("API key is invalid or expired.");
       } else {
-        throw new Error(`OpenAI API error: ${error.response.data.error.message}`);
+        throw new Error(`OpenAI API error: ${error.response?.data?.error?.message || 'Unknown error'}`);
       }
     } else if (error.request) {
       // Request was made but no response received
