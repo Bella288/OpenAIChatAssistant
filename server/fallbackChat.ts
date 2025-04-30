@@ -12,17 +12,29 @@ const huggingFaceClient = new InferenceClient(novitaApiKey);
 const QWEN_MODEL = "Qwen/Qwen3-235B-A22B";
 const MAX_TOKENS = 512;
 
+// System message to help guide the Qwen model
+const QWEN_SYSTEM_MESSAGE = `You are a helpful AI assistant. Provide clear, concise responses without showing your thinking process.
+Do not use XML tags like <think> or </think> in your responses.
+Keep your responses informative, friendly, and to the point.`;
+
 // Convert our message format to the format expected by the Hugging Face API
 function convertMessages(messages: MessageType[]): Array<{role: string, content: string}> {
-  // Filter out system messages as they may not be supported in the same way
+  // Start with our system message
+  const formattedMessages = [{
+    role: "system",
+    content: QWEN_SYSTEM_MESSAGE
+  }];
+  
+  // Filter out any existing system messages from the input
   const compatibleMessages = messages.filter(msg => msg.role !== 'system');
   
   // If no messages are left, add a default user message
   if (compatibleMessages.length === 0) {
-    return [{
+    formattedMessages.push({
       role: "user",
       content: "Hello, can you introduce yourself?"
-    }];
+    });
+    return formattedMessages;
   }
   
   // Make sure the last message is from the user
@@ -35,10 +47,13 @@ function convertMessages(messages: MessageType[]): Array<{role: string, content:
     });
   }
   
-  return compatibleMessages.map(msg => ({
+  // Add all the compatible messages
+  formattedMessages.push(...compatibleMessages.map(msg => ({
     role: msg.role,
     content: msg.content
-  }));
+  })));
+  
+  return formattedMessages;
 }
 
 // Main function to generate a fallback chat response using Qwen
@@ -59,8 +74,26 @@ export async function generateFallbackResponse(messages: MessageType[]): Promise
     
     // Extract and return the generated text
     if (response.choices && response.choices.length > 0 && response.choices[0].message) {
+      // Clean up the response - remove any thinking process or XML-like tags
+      let content = response.choices[0].message.content || '';
+      
+      // Remove the <think> sections that might appear in the response
+      content = content.replace(/<think>[\s\S]*?<\/think>/g, '');
+      
+      // Remove any other XML-like tags
+      content = content.replace(/<[^>]*>/g, '');
+      
+      // Clean up any excessive whitespace
+      content = content.replace(/^\s+|\s+$/g, '');
+      content = content.replace(/\n{3,}/g, '\n\n');
+      
+      // If content is empty after cleanup, provide a default message
+      if (!content.trim()) {
+        content = "I'm sorry, I couldn't generate a proper response.";
+      }
+      
       // Add a note that this is using the fallback model
-      return `${response.choices[0].message.content}\n\n(Note: I'm currently operating in fallback mode using the Qwen model because the OpenAI API is unavailable)`;
+      return `${content}\n\n(Note: I'm currently operating in fallback mode using the Qwen model because the OpenAI API is unavailable)`;
     } else {
       throw new Error("No valid response from Qwen model");
     }
