@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-auth.tsx";
 import { Redirect, Link } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -99,8 +99,8 @@ export default function AuthPage() {
   const isPending = loginMutation.isPending || registerMutation.isPending || isLoading;
 
   return (
-    <div className="container flex h-screen w-full items-center justify-center px-4 py-6">
-      <div className="flex w-full max-w-6xl flex-col md:flex-row gap-8">
+    <div className="container flex min-h-screen w-full items-center justify-center px-4 py-6 overflow-y-auto">
+      <div className="flex w-full max-w-6xl flex-col md:flex-row gap-8 my-8">
         {/* Auth Form Section */}
         <Card className="w-full max-w-md mx-auto">
           <CardHeader className="space-y-1">
