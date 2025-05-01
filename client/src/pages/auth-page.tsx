@@ -69,8 +69,6 @@ export default function AuthPage() {
   }
 
   // Form submission handlers
-
-  // Form submission handlers
   const onLoginSubmit = async (data: LoginFormValues) => {
     try {
       await loginMutation.mutateAsync(data);
