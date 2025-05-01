@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { useLocation, Link } from 'wouter';
 import { useChat } from '@/lib/hooks';
 import { useAuth } from '@/hooks/useAuth';
 import ChatHistory from '@/components/ChatHistory';
@@ -8,7 +8,7 @@ import ConnectionStatus from '@/components/ConnectionStatus';
 import ConversationSidebar from '@/components/ConversationSidebar';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Settings, Menu, MessageSquare } from "lucide-react";
+import { AlertCircle, Settings, Menu, MessageSquare, Image } from "lucide-react";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { nanoid } from 'nanoid';
 
@@ -85,8 +85,24 @@ const Home: React.FC = () => {
             <h1 className="font-bold text-2xl text-primary">AI Chat Assistant</h1>
           </div>
           
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-3">
             <ConnectionStatus isConnected={isConnected} currentModel={currentModel} />
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href="/image-generator">
+                    <Button variant="outline" size="sm" className="flex items-center">
+                      <Image className="h-4 w-4 mr-2" />
+                      <span>Image Generator</span>
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Create AI-generated images</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             
             <TooltipProvider>
               <Tooltip>
