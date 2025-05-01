@@ -18,11 +18,21 @@ Do not use XML tags like <think> or </think> in your responses.
 Keep your responses informative, friendly, and to the point.`;
 
 // Convert our message format to the format expected by the Hugging Face API
-function convertMessages(messages: MessageType[]): Array<{role: string, content: string}> {
+function convertMessages(messages: MessageType[], userSystemContext?: string): Array<{role: string, content: string}> {
+  // Create system message with user context if available
+  let systemContent = QWEN_SYSTEM_MESSAGE;
+  
+  if (userSystemContext) {
+    systemContent = `${QWEN_SYSTEM_MESSAGE}
+    
+User context: ${userSystemContext}`;
+    console.log("Including user system context in fallback chat");
+  }
+  
   // Start with our system message
   const formattedMessages = [{
     role: "system",
-    content: QWEN_SYSTEM_MESSAGE
+    content: systemContent
   }];
   
   // Filter out any existing system messages from the input
@@ -57,12 +67,12 @@ function convertMessages(messages: MessageType[]): Array<{role: string, content:
 }
 
 // Main function to generate a fallback chat response using Qwen
-export async function generateFallbackResponse(messages: MessageType[]): Promise<string> {
+export async function generateFallbackResponse(messages: MessageType[], userSystemContext?: string): Promise<string> {
   try {
     console.log("Generating fallback response using Qwen model");
     
     // Convert messages to the format expected by the Hugging Face API
-    const formattedMessages = convertMessages(messages);
+    const formattedMessages = convertMessages(messages, userSystemContext);
     
     // Make the API call to the Qwen model via Novita
     const response = await huggingFaceClient.chatCompletion({

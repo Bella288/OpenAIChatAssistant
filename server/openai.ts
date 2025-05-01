@@ -20,7 +20,7 @@ const systemMessage: MessageType = {
 // Flag to track current model in use
 let currentModel: 'openai' | 'qwen' | 'unavailable' = 'openai';
 
-export async function generateChatResponse(messages: MessageType[]): Promise<string> {
+export async function generateChatResponse(messages: MessageType[], userSystemContext?: string): Promise<string> {
   try {
     // Check if we can use OpenAI API
     const openAIAvailable = await canUseOpenAI();
@@ -36,7 +36,7 @@ export async function generateChatResponse(messages: MessageType[]): Promise<str
         }
         
         // Use Qwen fallback
-        return await generateFallbackResponse(messages);
+        return await generateFallbackResponse(messages, userSystemContext);
       } else {
         // Neither OpenAI nor Qwen is available
         currentModel = 'unavailable';
@@ -50,8 +50,19 @@ export async function generateChatResponse(messages: MessageType[]): Promise<str
       currentModel = 'openai';
     }
     
+    // Create the system message, incorporating user context if available
+    let enhancedSystemMessage = { ...systemMessage };
+    
+    if (userSystemContext) {
+      // Append the user's custom context to the system message
+      enhancedSystemMessage.content = `${systemMessage.content}
+      
+User context: ${userSystemContext}`;
+      console.log("Including user system context in chat");
+    }
+    
     // Always include system message at the beginning
-    const conversationWithSystem = [systemMessage, ...messages];
+    const conversationWithSystem = [enhancedSystemMessage, ...messages];
     
     // Make API call to OpenAI
     const response = await openai.chat.completions.create({
