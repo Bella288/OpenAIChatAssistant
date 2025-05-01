@@ -14,16 +14,17 @@ export const sessionStore = new PostgresSessionStore({
 
 // Configure session middleware
 export function setupSession(app: Express) {
-  // Generate a secure random session secret
+  // Generate a secure random session secret if not set
+  const sessionSecret = process.env.SESSION_SECRET || require("crypto").randomBytes(32).toString("hex");
   if (!process.env.SESSION_SECRET) {
     console.warn("SESSION_SECRET not set in environment, using a random value");
-    process.env.SESSION_SECRET = require("crypto").randomBytes(32).toString("hex");
+    process.env.SESSION_SECRET = sessionSecret;
   }
 
   // Session configuration
   const sessionConfig: session.SessionOptions = {
     store: sessionStore,
-    secret: process.env.SESSION_SECRET,
+    secret: sessionSecret as string,
     resave: false,
     saveUninitialized: false,
     cookie: {

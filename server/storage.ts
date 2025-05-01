@@ -15,6 +15,8 @@ import { eq, desc, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 // Storage interface for conversations and messages
+import session from 'express-session';
+
 export interface IStorage {
   // Message operations
   getMessages(conversationId: string): Promise<Message[]>;
@@ -35,6 +37,9 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(userData: any): Promise<User>;
   updateUserProfile(id: number, profile: Partial<User>): Promise<User | undefined>;
+  
+  // Session operations
+  sessionStore: session.Store;
 }
 
 export class DatabaseStorage implements IStorage {
