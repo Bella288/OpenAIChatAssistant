@@ -54,11 +54,35 @@ export async function generateChatResponse(messages: MessageType[], userSystemCo
     let enhancedSystemMessage = { ...systemMessage };
     
     if (userSystemContext) {
-      // Append the user's custom context to the system message
-      enhancedSystemMessage.content = `${systemMessage.content}
+      // Process the system context to extract key user information for explicit instructions
+      const nameMatch = userSystemContext.match(/name(?:\s+is)?(?:\s*:\s*|\s+)([\w\s.']+)/i);
+      const locationMatch = userSystemContext.match(/location(?:\s+is)?(?:\s*:\s*|\s+)([\w\s.,]+)/i);
+      const interestsMatch = userSystemContext.match(/interests(?:\s+are)?(?:\s*:\s*|\s+)([\w\s,.;]+)/i);
+      const professionMatch = userSystemContext.match(/profession(?:\s+is)?(?:\s*:\s*|\s+)([\w\s&,.-]+)/i);
+      const petsMatch = userSystemContext.match(/pets?(?:\s+are)?(?:\s*:\s*|\s+)([\w\s,.]+)/i);
       
-User context: ${userSystemContext}`;
-      console.log("Including user system context in chat");
+      // Build structured user profile information
+      let userInfo = '';
+      if (nameMatch) userInfo += `- Name: ${nameMatch[1].trim()}\n`;
+      if (locationMatch) userInfo += `- Location: ${locationMatch[1].trim()}\n`;
+      if (interestsMatch) userInfo += `- Interests: ${interestsMatch[1].trim()}\n`;
+      if (professionMatch) userInfo += `- Profession: ${professionMatch[1].trim()}\n`;
+      if (petsMatch) userInfo += `- Pets: ${petsMatch[1].trim()}\n`;
+      
+      // Append the user's custom context to the system message in a more structured way
+      enhancedSystemMessage.content = `${systemMessage.content}
+
+USER PROFILE INFORMATION:
+${userInfo || userSystemContext}
+
+IMPORTANT: You must remember these user details and incorporate them naturally in your responses when relevant. 
+When the user asks about their name, location, interests, profession, or pets, always answer using the information above.
+Never say you don't know their personal details if they're listed above. Answer as if you already know this information.
+
+Original system context provided by user:
+${userSystemContext}`;
+      
+      console.log("Including enhanced user system context in OpenAI chat");
     }
     
     // Always include system message at the beginning

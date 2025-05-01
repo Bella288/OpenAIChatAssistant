@@ -23,10 +23,47 @@ function convertMessages(messages: MessageType[], userSystemContext?: string): A
   let systemContent = QWEN_SYSTEM_MESSAGE;
   
   if (userSystemContext) {
+    // Process the system context to extract key user information
+    const nameMatch = userSystemContext.match(/name(?:\s+is)?(?:\s*:\s*|\s+)([\w\s.']+)/i);
+    const locationMatch = userSystemContext.match(/location(?:\s+is)?(?:\s*:\s*|\s+)([\w\s.,]+)/i);
+    const interestsMatch = userSystemContext.match(/interests(?:\s+are)?(?:\s*:\s*|\s+)([\w\s,.;]+)/i);
+    const professionMatch = userSystemContext.match(/profession(?:\s+is)?(?:\s*:\s*|\s+)([\w\s&,.-]+)/i);
+    const petsMatch = userSystemContext.match(/pets?(?:\s+are)?(?:\s*:\s*|\s+)([\w\s,.]+)/i);
+    
+    const userName = nameMatch ? nameMatch[1].trim() : null;
+    const userLocation = locationMatch ? locationMatch[1].trim() : null;
+    const userInterests = interestsMatch ? interestsMatch[1].trim() : null;
+    const userProfession = professionMatch ? professionMatch[1].trim() : null;
+    const userPets = petsMatch ? petsMatch[1].trim() : null;
+    
+    // Build a clear, structured system message for the model
+    let userInfo = '';
+    if (userName) userInfo += `- Your name is ${userName}\n`;
+    if (userLocation) userInfo += `- You live in ${userLocation}\n`;
+    if (userInterests) userInfo += `- Your interests include ${userInterests}\n`;
+    if (userProfession) userInfo += `- Your profession is ${userProfession}\n`;
+    if (userPets) userInfo += `- You have pets: ${userPets}\n`;
+    
+    // Build a more direct and instructive system message
     systemContent = `${QWEN_SYSTEM_MESSAGE}
     
-User context: ${userSystemContext}`;
-    console.log("Including user system context in fallback chat");
+IMPORTANT: The following is personal information about the user you are talking with. 
+Remember these details and incorporate them naturally in your responses:
+
+${userInfo || userSystemContext}
+
+INSTRUCTIONS:
+1. When the user asks about their name, location, interests, profession, or pets, answer using the information above.
+2. Never say you don't know their personal details if they're listed above.
+3. Answer as if you already know this information about them - do not say "based on your profile" or "you've told me".
+4. If asked about something not provided above, you can say you don't have that information.
+
+Original system context provided by user (for reference): 
+${userSystemContext}`;
+    
+    console.log("Including enhanced user system context in fallback chat");
+    if (userName) console.log(`Extracted user name: ${userName}`);
+    if (userLocation) console.log(`Extracted user location: ${userLocation}`);
   }
   
   // Start with our system message
