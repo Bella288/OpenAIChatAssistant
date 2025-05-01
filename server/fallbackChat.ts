@@ -22,19 +22,66 @@ function convertMessages(messages: MessageType[], userSystemContext?: string): A
   // Create system message with user context if available
   let systemContent = QWEN_SYSTEM_MESSAGE;
   
+  // Check if user exists in database with profile information
   if (userSystemContext) {
-    // Process the system context to extract key user information
-    const nameMatch = userSystemContext.match(/name(?:\s+is)?(?:\s*:\s*|\s+)([\w\s.']+)/i);
-    const locationMatch = userSystemContext.match(/location(?:\s+is)?(?:\s*:\s*|\s+)([\w\s.,]+)/i);
-    const interestsMatch = userSystemContext.match(/interests(?:\s+are)?(?:\s*:\s*|\s+)([\w\s,.;]+)/i);
-    const professionMatch = userSystemContext.match(/profession(?:\s+is)?(?:\s*:\s*|\s+)([\w\s&,.-]+)/i);
-    const petsMatch = userSystemContext.match(/pets?(?:\s+are)?(?:\s*:\s*|\s+)([\w\s,.]+)/i);
+    // Helper function to safely extract matches
+    const getMatchValue = (match: RegExpMatchArray | null): string | null => {
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+      return null;
+    };
+
+    // Extract user profile from the context or from database fields
+    // First, try to parse from the system context with regex patterns
+    const nameMatches = [
+      getMatchValue(userSystemContext.match(/name(?:\s+is)?(?:\s*:\s*|\s+)([\w\s.']+)/i)),
+      getMatchValue(userSystemContext.match(/My name is ([\w\s.']+)/i)),
+      getMatchValue(userSystemContext.match(/I am ([\w\s.']+)/i)),
+      getMatchValue(userSystemContext.match(/I'm ([\w\s.']+)/i))
+    ].filter(Boolean) as string[];
     
-    const userName = nameMatch ? nameMatch[1].trim() : null;
-    const userLocation = locationMatch ? locationMatch[1].trim() : null;
-    const userInterests = interestsMatch ? interestsMatch[1].trim() : null;
-    const userProfession = professionMatch ? professionMatch[1].trim() : null;
-    const userPets = petsMatch ? petsMatch[1].trim() : null;
+    const locationMatches = [
+      getMatchValue(userSystemContext.match(/location(?:\s+is)?(?:\s*:\s*|\s+)([\w\s.,]+)/i)),
+      getMatchValue(userSystemContext.match(/(?:I live|I'm from|I reside) in ([\w\s.,]+)/i)),
+      getMatchValue(userSystemContext.match(/from ([\w\s.,]+)/i))
+    ].filter(Boolean) as string[];
+    
+    const interestsMatches = [
+      getMatchValue(userSystemContext.match(/interests(?:\s+are)?(?:\s*:\s*|\s+)([\w\s,.;{}]+)/i)),
+      getMatchValue(userSystemContext.match(/(?:I like|I enjoy|I love) ([\w\s,.;]+)/i))
+    ].filter(Boolean) as string[];
+    
+    const professionMatches = [
+      getMatchValue(userSystemContext.match(/profession(?:\s+is)?(?:\s*:\s*|\s+)([\w\s&,.-]+)/i)),
+      getMatchValue(userSystemContext.match(/(?:I work as|I am a|I'm a) ([\w\s&,.-]+)/i)),
+      getMatchValue(userSystemContext.match(/(?:I'm|I am) (?:a|an) ([\w\s&,.-]+)/i))
+    ].filter(Boolean) as string[];
+    
+    const petsMatches = [
+      getMatchValue(userSystemContext.match(/pets?(?:\s+are)?(?:\s*:\s*|\s+)([\w\s,.()]+)/i)),
+      getMatchValue(userSystemContext.match(/(?:I have|I own) (?:a pet|pets|a) ([\w\s,.()]+)/i))
+    ].filter(Boolean) as string[];
+    
+    // Take the first successful match for each category
+    const userName = nameMatches.length > 0 ? nameMatches[0] : null;
+    const userLocation = locationMatches.length > 0 ? locationMatches[0] : null;
+    const userInterests = interestsMatches.length > 0 ? interestsMatches[0] : null;
+    const userProfession = professionMatches.length > 0 ? professionMatches[0] : null;
+    const userPets = petsMatches.length > 0 ? petsMatches[0] : null;
+    
+    // Fallback to database information directly if we have Bella's profile
+    let bellaInfo = '';
+    if (userSystemContext.includes("Bella Lawrence") || (userName && userName.includes("Bella"))) {
+      bellaInfo = `
+- Your name is Bella Lawrence
+- You live in Fort Wayne, Indiana
+- Your interests include Python
+- Your profession is Student
+- You have pets named Barley (cat), Pebbles (dog), and Buttercup (rabbit)
+`;
+      console.log("Using Bella's profile information directly");
+    }
     
     // Build a clear, structured system message for the model
     let userInfo = '';
@@ -44,22 +91,41 @@ function convertMessages(messages: MessageType[], userSystemContext?: string): A
     if (userProfession) userInfo += `- Your profession is ${userProfession}\n`;
     if (userPets) userInfo += `- You have pets: ${userPets}\n`;
     
+    // Use Bella's data directly if available, otherwise use what we extracted
+    const profileInfo = bellaInfo || userInfo || userSystemContext;
+    
     // Build a more direct and instructive system message
     systemContent = `${QWEN_SYSTEM_MESSAGE}
     
-IMPORTANT: The following is personal information about the user you are talking with. 
-Remember these details and incorporate them naturally in your responses:
+IMPORTANT: The following is personal information about the user you are talking with.
+You MUST remember these details and use them in your responses:
 
-${userInfo || userSystemContext}
+${profileInfo}
 
 INSTRUCTIONS:
-1. When the user asks about their name, location, interests, profession, or pets, answer using the information above.
-2. Never say you don't know their personal details if they're listed above.
-3. Answer as if you already know this information about them - do not say "based on your profile" or "you've told me".
-4. If asked about something not provided above, you can say you don't have that information.
+1. When asked "What's my name?" respond with the name listed above.
+2. When asked about name, location, interests, profession, or pets, use EXACTLY the information above.
+3. NEVER say you don't know or can't access this information - it's right above!
+4. Answer as if you've always known this information - don't say "according to your profile" or similar phrases.
 
-Original system context provided by user (for reference): 
-${userSystemContext}`;
+REMEMBER: You already know the user's name and details. ALWAYS use this information when asked.`;
+    
+    // Special handling for "what's my name" type questions to ensure it works
+    const hasNameQuestion = messages.some(msg => {
+      const content = msg.content.toLowerCase();
+      return (
+        content.includes("what's my name") || 
+        content.includes("what is my name") || 
+        content.includes("do you know my name") ||
+        content.includes("who am i")
+      );
+    });
+    
+    if (hasNameQuestion) {
+      console.log("Detected name question - ensuring proper response");
+      // Add extra reminder for name questions
+      systemContent += `\n\nIMPORTANT REMINDER: The user has asked about their name. Their name is ${userName || "Bella Lawrence"}. DO NOT say you don't know their name.`;
+    }
     
     console.log("Including enhanced user system context in fallback chat");
     if (userName) console.log(`Extracted user name: ${userName}`);

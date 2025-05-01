@@ -235,27 +235,62 @@ export default function UserSettingsModal({
                 <h3 className="text-lg font-medium">AI Assistant Preferences</h3>
               </div>
 
-              <FormField
-                control={form.control}
-                name="systemContext"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>System Context</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Add custom context for the AI assistant to understand your requirements better"
-                        className="min-h-[100px]"
-                        {...field}
-                        value={field.value || ""}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      This context will be provided to the AI assistant for all your conversations
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <FormLabel className="text-base">System Context</FormLabel>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      // Generate structured context from profile fields
+                      const fullName = form.getValues("fullName");
+                      const location = form.getValues("location");
+                      const interests = form.getValues("interests");
+                      const profession = form.getValues("profession");
+                      const pets = form.getValues("pets");
+                      
+                      // Format profile information in a structured way
+                      let profileInfo = "";
+                      if (fullName) profileInfo += `name: ${fullName}\n`;
+                      if (location) profileInfo += `location: ${location}\n`;
+                      if (interests && interests.length > 0) profileInfo += `interests: ${interests.join(", ")}\n`;
+                      if (profession) profileInfo += `profession: ${profession}\n`;
+                      if (pets) profileInfo += `pets: ${pets}\n`;
+                      
+                      // Get existing context
+                      const currentContext = form.getValues("systemContext") || "";
+                      
+                      // Set the new structured context
+                      form.setValue("systemContext", profileInfo + "\n" + currentContext);
+                    }}
+                  >
+                    Include Profile Info
+                  </Button>
+                </div>
+                
+                <FormField
+                  control={form.control}
+                  name="systemContext"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Add custom context for the AI assistant to understand your requirements better"
+                          className="min-h-[150px]"
+                          {...field}
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        This context will be provided to the AI assistant for all your conversations. 
+                        Use key-value pairs like "name: Your Name" for best results.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
             <DialogFooter>
