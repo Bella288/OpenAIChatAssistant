@@ -22,8 +22,20 @@ export const users = pgTable("users", {
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
+  id: true,
   username: true,
-  password: true,
+  email: true,
+});
+
+// Schema for Replit Auth upsert
+export const upsertUserSchema = createInsertSchema(users).pick({
+  id: true,
+  username: true,
+  email: true,
+  firstName: true,
+  lastName: true,
+  bio: true,
+  profileImageUrl: true,
 });
 
 export const updateUserProfileSchema = createInsertSchema(users)
@@ -34,10 +46,15 @@ export const updateUserProfileSchema = createInsertSchema(users)
     profession: true,
     pets: true,
     systemContext: true,
+    firstName: true,
+    lastName: true,
+    bio: true,
+    profileImageUrl: true,
   })
   .partial(); // Make all fields optional
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
 
 // Message model for chat
@@ -106,7 +123,7 @@ export const conversationSchema = z.object({
   messages: z.array(messageSchema),
   personality: personalityTypeSchema.optional().default("default"),
   conversationId: z.string().optional(),
-  userId: z.number().optional()
+  userId: z.string().optional()
 });
 
 export type ConversationType = z.infer<typeof conversationSchema>;

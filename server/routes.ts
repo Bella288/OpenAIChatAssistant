@@ -1,7 +1,8 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth } from "./auth";
+import { setupAuth as setupBasicAuth } from "./auth";
+import { setupAuth as setupReplitAuth, isAuthenticated } from "./replitAuth";
 import { generateChatResponse } from "./openai";
 import { canUseOpenAI, canUseQwen } from "./fallbackChat";
 import { getPersonalityConfig } from "./personalities";
@@ -60,8 +61,11 @@ async function updateModelStatus() {
 updateModelStatus();
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Set up authentication
-  setupAuth(app);
+  // Set up authentication - use Replit Auth (uncomment when ready)
+  await setupReplitAuth(app);
+  
+  // Legacy basic auth (comment out when fully migrated to Replit Auth)
+  // setupBasicAuth(app);
   // Get all conversations (filtered by user if authenticated)
   app.get("/api/conversations", async (req: Request, res: Response) => {
     try {

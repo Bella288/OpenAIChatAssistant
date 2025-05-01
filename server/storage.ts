@@ -26,17 +26,19 @@ export interface IStorage {
   // Conversation operations
   getConversation(id: string): Promise<Conversation | undefined>;
   getConversations(): Promise<Conversation[]>;
-  getUserConversations(userId: number): Promise<Conversation[]>;
+  getUserConversations(userId: string): Promise<Conversation[]>;
   createConversation(conversation: InsertConversation): Promise<Conversation>;
   deleteConversation(id: string): Promise<boolean>;
   updateConversationPersonality(id: string, personality: PersonalityType): Promise<Conversation | undefined>;
   updateConversationTitle(id: string, title: string): Promise<Conversation | undefined>;
   
   // User profile operations
-  getUserProfile(id: number): Promise<User | undefined>;
+  getUser(id: string): Promise<User | undefined>;
+  getUserProfile(id: string): Promise<User | undefined>; // For backward compatibility
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(userData: any): Promise<User>;
-  updateUserProfile(id: number, profile: Partial<User>): Promise<User | undefined>;
+  updateUserProfile(id: string, profile: Partial<User>): Promise<User | undefined>;
+  upsertUser(userData: any): Promise<User>;
   
   // Session operations
   sessionStore: session.Store;
@@ -195,7 +197,7 @@ export class DatabaseStorage implements IStorage {
   }
   
   // User operations
-  async getUserProfile(id: number): Promise<User | undefined> {
+  async getUser(id: string): Promise<User | undefined> {
     const [user] = await db
       .select()
       .from(users)
@@ -222,7 +224,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
   
-  async updateUserProfile(id: number, profile: Partial<User>): Promise<User | undefined> {
+  async updateUserProfile(id: string, profile: Partial<User>): Promise<User | undefined> {
     // Remove sensitive information that shouldn't be updated this way
     const { password, ...updateData } = profile;
     
@@ -235,8 +237,29 @@ export class DatabaseStorage implements IStorage {
     return updatedUser;
   }
   
+  async upsertUser(userData: any): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    
+    return user;
+  }
+  
+  // For backward compatibility
+  async getUserProfile(id: string): Promise<User | undefined> {
+    return this.getUser(id);
+  }
+  
   // Filter conversations by user ID
-  async getUserConversations(userId: number): Promise<Conversation[]> {
+  async getUserConversations(userId: string): Promise<Conversation[]> {
     return db
       .select()
       .from(conversations)
