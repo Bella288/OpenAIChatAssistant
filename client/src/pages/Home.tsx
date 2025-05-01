@@ -51,7 +51,7 @@ const Home: React.FC = () => {
       setConversationId(newConversation.id);
       
       // Load empty conversation (will show welcome message)
-      messages.loadMessages(newConversation.id);
+      loadMessages(newConversation.id);
       setSidebarOpen(false);
     } catch (error) {
       console.error('Error creating new conversation:', error);
@@ -68,7 +68,7 @@ const Home: React.FC = () => {
     
     setConversationId(id);
     // Load message history for this conversation
-    messages.loadMessages(id);
+    loadMessages(id);
     // Close sidebar on mobile after selection
     setSidebarOpen(false);
   };
