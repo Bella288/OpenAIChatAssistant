@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -30,21 +30,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
-// Extend the schema for form validation
-const profileFormSchema = updateUserProfileSchema
-  .extend({
-    // Add any additional validations if needed
-  })
-  .refine(
-    (data) => {
-      // Make any additional checks if needed
-      return true;
-    },
-    {
-      message: "Validation failed",
-      path: ["root"],
-    }
-  );
+// Create a form schema
+const profileFormSchema = z.object({
+  fullName: z.string().optional(),
+  location: z.string().optional(),
+  interests: z.array(z.string()).optional(),
+  profession: z.string().optional(),
+  pets: z.string().optional(),
+  systemContext: z.string().optional(),
+});
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
@@ -60,17 +54,32 @@ export default function UserSettingsModal({
   const { user } = useAuth();
   const { toast } = useToast();
   
+  // Create form with default values
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      fullName: user?.fullName || "",
-      location: user?.location || "",
-      interests: user?.interests || [],
-      profession: user?.profession || "",
-      pets: user?.pets || "",
-      systemContext: user?.systemContext || "",
+      fullName: "",
+      location: "",
+      interests: [],
+      profession: "",
+      pets: "",
+      systemContext: "",
     },
   });
+
+  // Update form when user data changes
+  useEffect(() => {
+    if (user) {
+      form.reset({
+        fullName: user.fullName || "",
+        location: user.location || "",
+        interests: user.interests || [],
+        profession: user.profession || "",
+        pets: user.pets || "",
+        systemContext: user.systemContext || "",
+      });
+    }
+  }, [user, form]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormValues) => {
@@ -137,7 +146,7 @@ export default function UserSettingsModal({
                   <FormItem>
                     <FormLabel>Full Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Your full name" {...field} />
+                      <Input placeholder="Your full name" {...field} value={field.value || ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -151,7 +160,7 @@ export default function UserSettingsModal({
                   <FormItem>
                     <FormLabel>Location</FormLabel>
                     <FormControl>
-                      <Input placeholder="Your location" {...field} />
+                      <Input placeholder="Your location" {...field} value={field.value || ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -165,7 +174,7 @@ export default function UserSettingsModal({
                   <FormItem>
                     <FormLabel>Profession</FormLabel>
                     <FormControl>
-                      <Input placeholder="Your profession" {...field} />
+                      <Input placeholder="Your profession" {...field} value={field.value || ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -181,7 +190,7 @@ export default function UserSettingsModal({
                     <FormControl>
                       <Input
                         placeholder="Interests (comma-separated)"
-                        value={field.value ? field.value.join(", ") : ""}
+                        value={field.value?.join(", ") || ""}
                         onChange={handleInterestsChange}
                       />
                     </FormControl>
@@ -200,7 +209,7 @@ export default function UserSettingsModal({
                   <FormItem>
                     <FormLabel>Pets</FormLabel>
                     <FormControl>
-                      <Input placeholder="Your pets" {...field} />
+                      <Input placeholder="Your pets" {...field} value={field.value || ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -223,6 +232,7 @@ export default function UserSettingsModal({
                         placeholder="Add custom context for the AI assistant to understand your requirements better"
                         className="min-h-[100px]"
                         {...field}
+                        value={field.value || ""}
                       />
                     </FormControl>
                     <FormDescription>

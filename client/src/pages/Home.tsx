@@ -9,6 +9,7 @@ import ChatHistory from '@/components/ChatHistory';
 import ChatInputForm from '@/components/ChatInputForm';
 import ConversationSidebar from '@/components/ConversationSidebar';
 import ConnectionStatus from '@/components/ConnectionStatus';
+import UserSettingsModal from '@/components/UserSettingsModal';
 import { useAuth } from '@/hooks/use-auth';
 import { useChat } from '@/lib/hooks';
 
@@ -18,6 +19,7 @@ const Home: React.FC = () => {
   const [, navigate] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [errorVisible, setErrorVisible] = useState(true);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   
   const { 
     messages, 
@@ -154,6 +156,7 @@ const Home: React.FC = () => {
                   <button 
                     className="p-2 rounded-full hover:bg-gray-100 text-gray-600"
                     aria-label="Settings"
+                    onClick={() => setSettingsOpen(true)}
                   >
                     <Settings className="h-5 w-5" />
                   </button>
@@ -213,6 +216,14 @@ const Home: React.FC = () => {
           />
         </div>
       </footer>
+
+      {/* User Settings Modal */}
+      {user && (
+        <UserSettingsModal 
+          isOpen={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
     </div>
   );
 };

@@ -11,7 +11,13 @@ import { useToast } from "@/hooks/use-toast";
 interface User {
   id: number;
   username: string;
-  // Add other user fields as needed, but not password
+  fullName?: string | null;
+  location?: string | null;
+  interests?: string[] | null;
+  profession?: string | null;
+  pets?: string | null;
+  systemContext?: string | null;
+  // We don't include password for security
 }
 
 type LoginData = {
