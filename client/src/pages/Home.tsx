@@ -8,7 +8,7 @@ import ConnectionStatus from '@/components/ConnectionStatus';
 import ConversationSidebar from '@/components/ConversationSidebar';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Settings, Menu, MessageSquare, Image } from "lucide-react";
+import { AlertCircle, Settings, Menu, MessageSquare, Image, Video } from "lucide-react";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { nanoid } from 'nanoid';
 
@@ -100,6 +100,22 @@ const Home: React.FC = () => {
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>Create AI-generated images</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href="/video-generator">
+                    <Button variant="outline" size="sm" className="flex items-center">
+                      <Video className="h-4 w-4 mr-2" />
+                      <span>Video Generator</span>
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Create AI-generated videos</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

@@ -5,6 +5,7 @@ import { generateChatResponse } from "./openai";
 import { canUseOpenAI, canUseQwen } from "./fallbackChat";
 import { getPersonalityConfig } from "./personalities";
 import { generateImage, imageGenerationSchema, isFluxAvailable } from "./flux";
+import { generateVideo, videoGenerationSchema, isVideoGenerationAvailable } from "./video";
 import { 
   messageSchema, 
   conversationSchema, 
@@ -358,6 +359,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ 
         isAvailable: false, 
         message: "Error checking FLUX availability" 
+      });
+    }
+  });
+
+  // Generate video using Replicate
+  app.post("/api/generate-video", async (req: Request, res: Response) => {
+    try {
+      // Validate the request body using the schema
+      const result = videoGenerationSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Invalid video generation parameters",
+          errors: result.error.format() 
+        });
+      }
+
+      // Generate the video
+      const videoUrl = await generateVideo(result.data);
+      
+      // Return the video URL
+      return res.json({ 
+        success: true, 
+        videoUrl,
+        params: result.data
+      });
+    } catch (error: any) {
+      console.error("Error generating video:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: error.message || "Failed to generate video" 
+      });
+    }
+  });
+
+  // Check video generation availability
+  app.get("/api/video-status", async (_req: Request, res: Response) => {
+    try {
+      const isAvailable = await isVideoGenerationAvailable();
+      return res.json({ 
+        isAvailable,
+        model: "Wan-AI/Wan2.1-T2V-14B"
+      });
+    } catch (error) {
+      console.error("Error checking video generation availability:", error);
+      return res.status(500).json({ 
+        isAvailable: false, 
+        message: "Error checking video generation availability" 
       });
     }
   });

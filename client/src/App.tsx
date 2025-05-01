@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import AuthPage from "@/pages/auth-page";
 import ImageGenPage from "@/pages/ImageGenPage";
+import VideoGenPage from "@/pages/VideoGenPage";
 import { AuthProvider } from "@/hooks/useAuth";
 
 function Router() {
@@ -15,6 +16,7 @@ function Router() {
       <Route path="/" component={Home}/>
       <Route path="/auth" component={AuthPage} />
       <Route path="/image-generator" component={ImageGenPage} />
+      <Route path="/video-generator" component={VideoGenPage} />
       <Route component={NotFound} />
     </Switch>
   );
