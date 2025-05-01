@@ -60,10 +60,24 @@ async function updateModelStatus() {
 updateModelStatus();
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Get all conversations
+  // Set up authentication
+  setupAuth(app);
+  // Get all conversations (filtered by user if authenticated)
   app.get("/api/conversations", async (req: Request, res: Response) => {
     try {
-      const conversations = await storage.getConversations();
+      let conversations;
+      
+      // If user is authenticated, only get their conversations
+      if (req.isAuthenticated() && req.user) {
+        const userId = req.user.id;
+        conversations = await storage.getUserConversations(userId);
+      } else {
+        // For unauthenticated users, get only conversations without a userId
+        conversations = await storage.getConversations();
+        // Filter out conversations that belong to users
+        conversations = conversations.filter(conv => !conv.userId);
+      }
+      
       res.json(conversations);
     } catch (error) {
       console.error("Error fetching conversations:", error);
@@ -89,11 +103,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })}`;
       }
       
-      const result = insertConversationSchema.safeParse({
+      // Include user ID if authenticated
+      const conversationData: any = {
         id: conversationId,
         title: title,
         personality: req.body.personality || "general"
-      });
+      };
+      
+      // Associate conversation with user if authenticated
+      if (req.isAuthenticated() && req.user) {
+        conversationData.userId = req.user.id;
+      }
+      
+      const result = insertConversationSchema.safeParse(conversationData);
 
       if (!result.success) {
         return res.status(400).json({ message: "Invalid conversation data." });
@@ -145,6 +167,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         title = response.choices[0].message.content?.trim();
+        
+        // Use fallback if title is undefined or empty
+        if (!title) {
+          title = `Chat ${new Date().toLocaleDateString()}`;
+        }
       } catch (err) {
         // Fallback to a generic title
         console.error("Error generating AI title:", err);
@@ -152,7 +179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Update the conversation with the new title
-      const updatedConversation = await storage.updateConversationTitle(id, title);
+      const updatedConversation = await storage.updateConversationTitle(id, title as string);
       
       if (!updatedConversation) {
         return res.status(404).json({ message: "Conversation not found" });
@@ -173,6 +200,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found." });
+      }
+      
+      // Check ownership if the conversation belongs to a user
+      if (conversation.userId && req.isAuthenticated() && req.user) {
+        // User must be the owner of the conversation
+        if (conversation.userId !== req.user.id) {
+          return res.status(403).json({ message: "You don't have permission to access this conversation." });
+        }
       }
       
       const messages = await storage.getMessages(id);
@@ -209,6 +244,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conversation = await storage.getConversation(conversationId);
       if (!conversation && conversationId !== "default") {
         return res.status(404).json({ message: "Conversation not found." });
+      }
+
+      // If conversation belongs to a user, check permissions
+      if (conversation && conversation.userId) {
+        // If user is not authenticated or not the owner
+        if (!req.isAuthenticated() || !req.user || conversation.userId !== req.user.id) {
+          return res.status(403).json({ message: "You don't have permission to access this conversation." });
+        }
       }
 
       // Store user message
@@ -282,6 +325,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Conversation not found" });
       }
       
+      // Check ownership if the conversation belongs to a user
+      if (conversation.userId && req.isAuthenticated() && req.user) {
+        // User must be the owner of the conversation
+        if (conversation.userId !== req.user.id) {
+          return res.status(403).json({ message: "You don't have permission to delete this conversation." });
+        }
+      }
+      
       // Delete the conversation
       const success = await storage.deleteConversation(id);
       
@@ -311,6 +362,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conversation = await storage.getConversation(id);
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Check ownership if the conversation belongs to a user
+      if (conversation.userId && req.isAuthenticated() && req.user) {
+        // User must be the owner of the conversation
+        if (conversation.userId !== req.user.id) {
+          return res.status(403).json({ message: "You don't have permission to update this conversation." });
+        }
       }
       
       // Update the conversation
@@ -345,6 +404,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const conversation = await storage.getConversation(id);
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Check ownership if the conversation belongs to a user
+      if (conversation.userId && req.isAuthenticated() && req.user) {
+        // User must be the owner of the conversation
+        if (conversation.userId !== req.user.id) {
+          return res.status(403).json({ message: "You don't have permission to update this conversation." });
+        }
       }
       
       // Update the conversation personality
