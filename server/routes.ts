@@ -6,6 +6,8 @@ import { canUseOpenAI, canUseQwen } from "./fallbackChat";
 import { getPersonalityConfig } from "./personalities";
 import { generateImage, imageGenerationSchema, isFluxAvailable } from "./flux";
 import { generateVideo, videoGenerationSchema, isVideoGenerationAvailable } from "./video";
+import OpenAI from "openai";
+import { nanoid } from "nanoid";
 import { 
   messageSchema, 
   conversationSchema, 
@@ -15,7 +17,6 @@ import {
   personalityTypeSchema
 } from "@shared/schema";
 import { z } from "zod";
-import { nanoid } from "nanoid";
 
 // Track the current model in use
 let currentModelStatus = {

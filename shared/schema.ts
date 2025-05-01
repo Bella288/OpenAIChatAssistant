@@ -6,12 +6,29 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  fullName: text("full_name"),
+  location: text("location"),
+  interests: text("interests").array(),
+  profession: text("profession"),
+  pets: text("pets"),
+  systemContext: text("system_context"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
 });
+
+export const updateUserProfileSchema = createInsertSchema(users)
+  .pick({
+    fullName: true,
+    location: true,
+    interests: true,
+    profession: true,
+    pets: true,
+    systemContext: true,
+  })
+  .partial(); // Make all fields optional
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -52,12 +69,14 @@ export const conversations = pgTable("conversations", {
   title: text("title").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   personality: text("personality").default("default").notNull(),
+  userId: integer("user_id").references(() => users.id),
 });
 
 export const insertConversationSchema = createInsertSchema(conversations).pick({
   id: true,
   title: true,
   personality: true,
+  userId: true,
 });
 
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
@@ -79,7 +98,8 @@ export type MessageType = z.infer<typeof messageSchema>;
 export const conversationSchema = z.object({
   messages: z.array(messageSchema),
   personality: personalityTypeSchema.optional().default("default"),
-  conversationId: z.string().optional()
+  conversationId: z.string().optional(),
+  userId: z.number().optional()
 });
 
 export type ConversationType = z.infer<typeof conversationSchema>;

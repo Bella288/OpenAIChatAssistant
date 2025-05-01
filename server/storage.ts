@@ -3,10 +3,12 @@ import {
   type InsertMessage, 
   type Conversation, 
   type InsertConversation,
+  type User,
   PersonalityType,
   messageRoleSchema,
   messages,
-  conversations
+  conversations,
+  users
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc } from "drizzle-orm";
@@ -22,10 +24,15 @@ export interface IStorage {
   // Conversation operations
   getConversation(id: string): Promise<Conversation | undefined>;
   getConversations(): Promise<Conversation[]>;
+  getUserConversations(userId: number): Promise<Conversation[]>;
   createConversation(conversation: InsertConversation): Promise<Conversation>;
   deleteConversation(id: string): Promise<boolean>;
   updateConversationPersonality(id: string, personality: PersonalityType): Promise<Conversation | undefined>;
   updateConversationTitle(id: string, title: string): Promise<Conversation | undefined>;
+  
+  // User profile operations
+  getUserProfile(id: number): Promise<User | undefined>;
+  updateUserProfile(id: number, profile: Partial<User>): Promise<User | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -102,7 +109,9 @@ export class DatabaseStorage implements IStorage {
           .update(conversations)
           .set({
             title: conversation.title,
-            personality: conversation.personality || "general"
+            personality: conversation.personality || "general",
+            // Only update userId if provided
+            ...(conversation.userId && { userId: conversation.userId })
           })
           .where(eq(conversations.id, conversation.id))
           .returning();
@@ -118,6 +127,7 @@ export class DatabaseStorage implements IStorage {
         id: conversation.id || nanoid(),
         title: conversation.title,
         personality: conversation.personality || "general",
+        userId: conversation.userId, // Include the user ID (can be null for unassociated conversations)
         createdAt: new Date()
       })
       .returning();
@@ -166,6 +176,38 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return updatedConversation;
+  }
+  
+  // User operations
+  async getUserProfile(id: number): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, id));
+    
+    return user;
+  }
+  
+  async updateUserProfile(id: number, profile: Partial<User>): Promise<User | undefined> {
+    // Remove sensitive information that shouldn't be updated this way
+    const { password, ...updateData } = profile;
+    
+    const [updatedUser] = await db
+      .update(users)
+      .set(updateData as any)
+      .where(eq(users.id, id))
+      .returning();
+    
+    return updatedUser;
+  }
+  
+  // Filter conversations by user ID
+  async getUserConversations(userId: number): Promise<Conversation[]> {
+    return db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.userId, userId))
+      .orderBy(desc(conversations.createdAt));
   }
 }
 
