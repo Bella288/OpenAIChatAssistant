@@ -35,6 +35,7 @@ const profileFormSchema = z.object({
   fullName: z.string().optional(),
   location: z.string().optional(),
   interests: z.array(z.string()).optional(),
+  interestsInput: z.string().optional(), // For input field value only, not submitted
   profession: z.string().optional(),
   pets: z.string().optional(),
   systemContext: z.string().optional(),
@@ -61,6 +62,7 @@ export default function UserSettingsModal({
       fullName: "",
       location: "",
       interests: [],
+      interestsInput: "",
       profession: "",
       pets: "",
       systemContext: "",
@@ -70,10 +72,14 @@ export default function UserSettingsModal({
   // Update form when user data changes
   useEffect(() => {
     if (user) {
+      // Convert interests array to comma-separated string for display
+      const interestsString = user.interests?.join(", ") || "";
+      
       form.reset({
         fullName: user.fullName || "",
         location: user.location || "",
         interests: user.interests || [],
+        interestsInput: interestsString,
         profession: user.profession || "",
         pets: user.pets || "",
         systemContext: user.systemContext || "",
@@ -108,12 +114,20 @@ export default function UserSettingsModal({
   });
 
   const onSubmit = async (data: ProfileFormValues) => {
-    await updateProfileMutation.mutateAsync(data);
+    // Create a copy of the data object without interestsInput
+    const { interestsInput, ...submitData } = data;
+    
+    // Submit data without the temporary interestsInput field
+    await updateProfileMutation.mutateAsync(submitData);
   };
 
   // Convert string to array for interests field if needed
   const handleInterestsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
+    // Just store the input value as is, don't process it yet
+    form.setValue("interestsInput", value);
+    
+    // Process for the actual interests field that gets submitted
     const interestsArray = value
       .split(",")
       .map((item) => item.trim())
@@ -183,14 +197,14 @@ export default function UserSettingsModal({
 
               <FormField
                 control={form.control}
-                name="interests"
+                name="interestsInput"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Interests</FormLabel>
                     <FormControl>
                       <Input
                         placeholder="Interests (comma-separated)"
-                        value={field.value?.join(", ") || ""}
+                        {...field}
                         onChange={handleInterestsChange}
                       />
                     </FormControl>

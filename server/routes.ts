@@ -266,8 +266,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conversationId
       });
 
-      // Generate AI response
-      const aiResponse = await generateChatResponse(messages);
+      // Get user system context if available
+      let userSystemContext = undefined;
+      if (req.isAuthenticated() && req.user) {
+        // If we have a logged-in user, include their system context
+        userSystemContext = req.user.systemContext;
+        console.log("Including user system context in conversation:", 
+                    userSystemContext ? "Yes" : "None available");
+      }
+
+      // Generate AI response with user's system context if available
+      const aiResponse = await generateChatResponse(messages, userSystemContext);
 
       // Store AI response
       const savedMessage = await storage.createMessage({
