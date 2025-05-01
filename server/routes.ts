@@ -1,9 +1,10 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { generateChatResponse } from "./openai";
 import { canUseOpenAI, canUseQwen } from "./fallbackChat";
 import { getPersonalityConfig } from "./personalities";
+import { generateImage, imageGenerationSchema, isFluxAvailable } from "./flux";
 import { 
   messageSchema, 
   conversationSchema, 
@@ -311,6 +312,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching personalities:", error);
       res.status(500).json({ message: "Failed to fetch personalities" });
+    }
+  });
+
+  // Generate image with FLUX.1-dev
+  app.post("/api/generate-image", async (req: Request, res: Response) => {
+    try {
+      // Validate the request body using the schema
+      const result = imageGenerationSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Invalid image generation parameters",
+          errors: result.error.format() 
+        });
+      }
+
+      // Generate the image
+      const imageUrl = await generateImage(result.data);
+      
+      // Return the image URL
+      return res.json({ 
+        success: true, 
+        imageUrl,
+        params: result.data
+      });
+    } catch (error: any) {
+      console.error("Error generating image:", error);
+      return res.status(500).json({ 
+        success: false, 
+        message: error.message || "Failed to generate image" 
+      });
+    }
+  });
+
+  // Check FLUX availability
+  app.get("/api/flux-status", async (_req: Request, res: Response) => {
+    try {
+      const isAvailable = await isFluxAvailable();
+      return res.json({ 
+        isAvailable,
+        model: "FLUX.1-dev"
+      });
+    } catch (error) {
+      console.error("Error checking FLUX availability:", error);
+      return res.status(500).json({ 
+        isAvailable: false, 
+        message: "Error checking FLUX availability" 
+      });
     }
   });
 
