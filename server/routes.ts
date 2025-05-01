@@ -73,9 +73,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/conversations", async (req: Request, res: Response) => {
     try {
       const conversationId = nanoid();
+      
+      // Generate a timestamp-based title if none provided
+      let title = req.body.title;
+      if (!title || title === "New Conversation") {
+        const date = new Date();
+        title = `Conversation ${date.toLocaleString('en-US', { 
+          month: 'short', 
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        })}`;
+      }
+      
       const result = insertConversationSchema.safeParse({
         id: conversationId,
-        title: req.body.title || "New Conversation"
+        title: title,
+        personality: req.body.personality || "general"
       });
 
       if (!result.success) {

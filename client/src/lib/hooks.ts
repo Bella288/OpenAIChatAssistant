@@ -16,6 +16,13 @@ export function useChat(initialConversationId = "default") {
   const [currentModel, setCurrentModel] = useState<'openai' | 'qwen' | 'unavailable'>('openai');
   const [isConnected, setIsConnected] = useState(true);
 
+  // Load message history for a conversation when it changes
+  useEffect(() => {
+    if (conversationId) {
+      loadMessages(conversationId);
+    }
+  }, [conversationId]);
+
   // Load message history for a conversation
   const loadMessages = useCallback(async (convId: string) => {
     try {
@@ -25,6 +32,16 @@ export function useChat(initialConversationId = "default") {
       });
       
       if (!response.ok) {
+        if (response.status === 404) {
+          // If conversation not found, reset to welcome message
+          setMessages([
+            {
+              role: "assistant",
+              content: "Hello! I'm your AI assistant. How can I help you today?"
+            }
+          ]);
+          return;
+        }
         throw new Error('Failed to load message history');
       }
       
@@ -50,6 +67,8 @@ export function useChat(initialConversationId = "default") {
 
   // Send a message to the API
   const sendMessage = useCallback(async (content: string) => {
+    if (!content.trim()) return;
+    
     try {
       setIsLoading(true);
       setError(null);
@@ -63,10 +82,13 @@ export function useChat(initialConversationId = "default") {
       setMessages(prev => [...prev, userMessage]);
       
       // Prepare message history for API
-      const messageHistory = messages.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }));
+      // Filter out any messages without content or role
+      const messageHistory = messages
+        .filter(msg => msg.content && msg.role) 
+        .map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }));
       
       // Add the new user message
       messageHistory.push({
@@ -90,6 +112,11 @@ export function useChat(initialConversationId = "default") {
         setCurrentModel(data.modelInfo.model);
       }
       
+      // Auto-refresh message history to sync with server
+      setTimeout(() => {
+        loadMessages(conversationId);
+      }, 1000);
+      
     } catch (err: any) {
       let errorMessage = err.message || 'Failed to send message';
       
@@ -103,7 +130,7 @@ export function useChat(initialConversationId = "default") {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, conversationId]);
+  }, [messages, conversationId, loadMessages]);
 
   // Clear the current conversation
   const clearConversation = useCallback(() => {

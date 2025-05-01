@@ -4,8 +4,13 @@ import {
   type Conversation, 
   type InsertConversation,
   PersonalityType,
-  messageRoleSchema
+  messageRoleSchema,
+  messages,
+  conversations
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, desc, asc } from "drizzle-orm";
+import { nanoid } from "nanoid";
 
 // Storage interface for conversations and messages
 export interface IStorage {
@@ -20,116 +25,149 @@ export interface IStorage {
   createConversation(conversation: InsertConversation): Promise<Conversation>;
   deleteConversation(id: string): Promise<boolean>;
   updateConversationPersonality(id: string, personality: PersonalityType): Promise<Conversation | undefined>;
+  updateConversationTitle(id: string, title: string): Promise<Conversation | undefined>;
 }
 
-export class MemStorage implements IStorage {
-  private messages: Map<number, Message>;
-  private conversations: Map<string, Conversation>;
-  private currentMessageId: number;
-
+export class DatabaseStorage implements IStorage {
   constructor() {
-    this.messages = new Map();
-    this.conversations = new Map();
-    this.currentMessageId = 1;
-    
-    // Create default conversation
-    const defaultConversation: Conversation = {
-      id: "default",
-      title: "New Conversation",
-      createdAt: new Date(),
-      personality: "default"
-    };
-    
-    this.conversations.set(defaultConversation.id, defaultConversation);
+    // Initialize default conversation if it doesn't exist
+    this.initializeDefaultConversation();
+  }
+
+  private async initializeDefaultConversation() {
+    try {
+      const defaultConversation = await this.getConversation("default");
+      if (!defaultConversation) {
+        await this.createConversation({
+          id: "default",
+          title: "New Conversation",
+          personality: "general"
+        });
+      }
+    } catch (error) {
+      console.error("Error initializing default conversation:", error);
+    }
   }
 
   // Message operations
   async getMessages(conversationId: string): Promise<Message[]> {
-    return Array.from(this.messages.values())
-      .filter(message => message.conversationId === conversationId)
-      .sort((a, b) => {
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      });
+    return db
+      .select()
+      .from(messages)
+      .where(eq(messages.conversationId, conversationId))
+      .orderBy(asc(messages.createdAt));
   }
 
   async createMessage(insertMessage: InsertMessage): Promise<Message> {
-    const id = this.currentMessageId++;
-    const message: Message = { 
-      ...insertMessage, 
-      id, 
-      createdAt: new Date() 
-    };
-    this.messages.set(id, message);
-    return message;
+    const [newMessage] = await db
+      .insert(messages)
+      .values({
+        ...insertMessage,
+        createdAt: new Date()
+      })
+      .returning();
+    
+    return newMessage;
   }
   
   async deleteMessages(conversationId: string): Promise<void> {
-    // Get all message IDs for this conversation
-    const messageIds = Array.from(this.messages.entries())
-      .filter(([_id, message]) => message.conversationId === conversationId)
-      .map(([id, _message]) => id);
-    
-    // Delete each message
-    for (const id of messageIds) {
-      this.messages.delete(id);
-    }
+    await db
+      .delete(messages)
+      .where(eq(messages.conversationId, conversationId));
   }
 
   // Conversation operations
   async getConversation(id: string): Promise<Conversation | undefined> {
-    return this.conversations.get(id);
+    const [conversation] = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.id, id));
+    
+    return conversation;
   }
 
   async getConversations(): Promise<Conversation[]> {
-    return Array.from(this.conversations.values())
-      .sort((a, b) => {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      });
+    return db
+      .select()
+      .from(conversations)
+      .orderBy(desc(conversations.createdAt));
   }
 
   async createConversation(conversation: InsertConversation): Promise<Conversation> {
-    const newConversation: Conversation = {
-      ...conversation,
-      personality: conversation.personality || "default",
-      createdAt: new Date()
-    };
-    this.conversations.set(conversation.id, newConversation);
+    // If the conversation already exists, update it
+    if (conversation.id) {
+      const existingConversation = await this.getConversation(conversation.id);
+      if (existingConversation) {
+        const [updatedConversation] = await db
+          .update(conversations)
+          .set({
+            title: conversation.title,
+            personality: conversation.personality || "general"
+          })
+          .where(eq(conversations.id, conversation.id))
+          .returning();
+        
+        return updatedConversation;
+      }
+    }
+    
+    // Otherwise, create a new conversation
+    const [newConversation] = await db
+      .insert(conversations)
+      .values({
+        id: conversation.id || nanoid(),
+        title: conversation.title,
+        personality: conversation.personality || "general",
+        createdAt: new Date()
+      })
+      .returning();
+    
     return newConversation;
   }
   
   async deleteConversation(id: string): Promise<boolean> {
-    // Check if conversation exists
-    if (!this.conversations.has(id)) {
-      return false;
-    }
-    
     // Don't allow deleting the default conversation
     if (id === "default") {
       return false;
     }
     
-    // Delete all messages in the conversation first
-    await this.deleteMessages(id);
-    
-    // Delete the conversation
-    this.conversations.delete(id);
-    return true;
+    try {
+      // Delete associated messages first
+      await this.deleteMessages(id);
+      
+      // Then delete the conversation
+      const [deletedConversation] = await db
+        .delete(conversations)
+        .where(eq(conversations.id, id))
+        .returning();
+      
+      return !!deletedConversation;
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+      return false;
+    }
   }
   
   async updateConversationPersonality(id: string, personality: PersonalityType): Promise<Conversation | undefined> {
-    const conversation = this.conversations.get(id);
-    if (!conversation) {
-      return undefined;
-    }
+    const [updatedConversation] = await db
+      .update(conversations)
+      .set({ personality })
+      .where(eq(conversations.id, id))
+      .returning();
     
-    const updatedConversation = {
-      ...conversation,
-      personality
-    };
+    return updatedConversation;
+  }
+  
+  async updateConversationTitle(id: string, title: string): Promise<Conversation | undefined> {
+    const [updatedConversation] = await db
+      .update(conversations)
+      .set({ title })
+      .where(eq(conversations.id, id))
+      .returning();
     
-    this.conversations.set(id, updatedConversation);
     return updatedConversation;
   }
 }
 
-export const storage = new MemStorage();
+// Use the database storage for production
+export const storage = new DatabaseStorage();

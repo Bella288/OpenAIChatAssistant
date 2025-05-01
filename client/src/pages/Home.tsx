@@ -25,19 +25,52 @@ const Home: React.FC = () => {
     error, 
     isConnected,
     currentModel, 
-    sendMessage 
+    sendMessage,
+    loadMessages
   } = useChat(conversationId);
   
   // Handle creating a new conversation
-  const handleNewConversation = () => {
-    const newId = nanoid();
-    // In a real app, you'd also create this on the server
-    setConversationId(newId);
+  const handleNewConversation = async () => {
+    try {
+      // Create a new conversation on the server
+      const response = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          title: ''  // Let the server generate a title
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create new conversation');
+      }
+      
+      const newConversation = await response.json();
+      setConversationId(newConversation.id);
+      
+      // Load empty conversation (will show welcome message)
+      messages.loadMessages(newConversation.id);
+      setSidebarOpen(false);
+    } catch (error) {
+      console.error('Error creating new conversation:', error);
+    }
   };
   
   // Handle selecting a conversation
   const handleSelectConversation = (id: string) => {
+    if (id === conversationId) {
+      // Already selected, just close the sidebar
+      setSidebarOpen(false);
+      return;
+    }
+    
     setConversationId(id);
+    // Load message history for this conversation
+    messages.loadMessages(id);
+    // Close sidebar on mobile after selection
+    setSidebarOpen(false);
   };
   
   // Handle sign in button click
