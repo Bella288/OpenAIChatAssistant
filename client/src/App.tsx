@@ -8,15 +8,16 @@ import Home from "@/pages/Home";
 import AuthPage from "@/pages/auth-page";
 import ImageGenPage from "@/pages/ImageGenPage";
 import VideoGenPage from "@/pages/VideoGenPage";
-import { AuthProvider } from "@/hooks/useAuth";
+import { AuthProvider } from "@/hooks/use-auth";
+import { ProtectedRoute } from "@/lib/protected-route";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home}/>
+      <ProtectedRoute path="/" component={Home} />
       <Route path="/auth" component={AuthPage} />
-      <Route path="/image-generator" component={ImageGenPage} />
-      <Route path="/video-generator" component={VideoGenPage} />
+      <ProtectedRoute path="/image-generator" component={ImageGenPage} />
+      <ProtectedRoute path="/video-generator" component={VideoGenPage} />
       <Route component={NotFound} />
     </Switch>
   );

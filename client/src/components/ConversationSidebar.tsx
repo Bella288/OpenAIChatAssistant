@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { apiRequest } from '@/lib/queryClient';
 import { Conversation } from '@/lib/types';
+import { useAuth } from '@/hooks/use-auth';
+import { useLocation } from 'wouter';
 
 interface ConversationSidebarProps {
   isOpen: boolean;
@@ -12,9 +14,6 @@ interface ConversationSidebarProps {
   selectedConversationId: string;
   onSelectConversation: (conversationId: string) => void;
   onNewConversation: () => void;
-  isSignedIn: boolean;
-  onSignIn: () => void;
-  onSignOut: () => void;
 }
 
 const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
@@ -22,20 +21,19 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   onClose,
   selectedConversationId,
   onSelectConversation,
-  onNewConversation,
-  isSignedIn,
-  onSignIn,
-  onSignOut
+  onNewConversation
 }) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
+  const { user, logoutMutation } = useAuth();
+  const [, setLocation] = useLocation();
+  
+  const isSignedIn = !!user;
   
   // Fetch conversations
   useEffect(() => {
-    if (!isSignedIn) return;
-    
     const fetchConversations = async () => {
       setIsLoading(true);
       try {
@@ -59,6 +57,20 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
     const interval = setInterval(fetchConversations, 30000);
     return () => clearInterval(interval);
   }, [isSignedIn]);
+  
+  // Navigate to auth page
+  const handleSignIn = () => {
+    setLocation('/auth');
+  };
+  
+  // Sign out
+  const handleSignOut = async () => {
+    try {
+      await logoutMutation.mutateAsync();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
   
   // Start editing a conversation title
   const handleEditStart = (conversation: Conversation) => {
@@ -155,7 +167,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
       <div className="p-4 border-b border-gray-200">
         {isSignedIn ? (
           <Button 
-            onClick={onSignOut} 
+            onClick={handleSignOut} 
             variant="ghost" 
             className="w-full flex items-center justify-center text-red-500 hover:text-red-700 hover:bg-red-50"
           >
@@ -164,7 +176,7 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           </Button>
         ) : (
           <Button 
-            onClick={onSignIn} 
+            onClick={handleSignIn} 
             variant="default" 
             className="w-full flex items-center justify-center"
           >
