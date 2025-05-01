@@ -16,13 +16,6 @@ export function useChat(initialConversationId = "default") {
   const [currentModel, setCurrentModel] = useState<'openai' | 'qwen' | 'unavailable'>('openai');
   const [isConnected, setIsConnected] = useState(true);
 
-  // Load message history for a conversation when it changes
-  useEffect(() => {
-    if (conversationId) {
-      loadMessages(conversationId);
-    }
-  }, [conversationId]);
-
   // Load message history for a conversation
   const loadMessages = useCallback(async (convId: string) => {
     try {
@@ -64,6 +57,21 @@ export function useChat(initialConversationId = "default") {
       setIsLoading(false);
     }
   }, []);
+
+  // Auto-load messages when conversation ID changes
+  useEffect(() => {
+    const fetchMessages = async () => {
+      if (conversationId) {
+        try {
+          await loadMessages(conversationId);
+        } catch (error) {
+          console.error("Failed to load messages:", error);
+        }
+      }
+    };
+    
+    fetchMessages();
+  }, [conversationId]);
 
   // Send a message to the API
   const sendMessage = useCallback(async (content: string) => {

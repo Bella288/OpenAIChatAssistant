@@ -74,7 +74,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const conversationId = nanoid();
       
-      // Generate a timestamp-based title if none provided
+      // Generate a timestamp-based default title
       let title = req.body.title;
       if (!title || title === "New Conversation") {
         const date = new Date();
@@ -102,6 +102,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating conversation:", error);
       res.status(500).json({ message: "Failed to create conversation." });
+    }
+  });
+  
+  // Generate AI title for conversation
+  app.post("/api/conversations/:id/generate-title", async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      
+      // Get the conversation messages
+      const messages = await storage.getMessages(id);
+      
+      if (messages.length < 2) {
+        return res.status(400).json({ message: "Need at least one exchange to generate a title" });
+      }
+      
+      // Extract the first few messages (user and assistant) to use as context
+      const contextMessages = messages.slice(0, Math.min(4, messages.length))
+        .map(msg => `${msg.role}: ${msg.content}`).join("\n");
+      
+      // Generate the title using AI
+      let title;
+      try {
+        // First try using OpenAI
+        const openaiClient = new OpenAI();
+        const response = await openaiClient.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: "You are a helpful assistant that generates short, descriptive titles (max 6 words) for conversations based on their content. Respond with just the title."
+            },
+            {
+              role: "user",
+              content: `Generate a short, descriptive title (maximum 6 words) for this conversation:\n${contextMessages}`
+            }
+          ],
+          max_tokens: 20,
+          temperature: 0.7
+        });
+        
+        title = response.choices[0].message.content?.trim();
+      } catch (err) {
+        // Fallback to a generic title
+        console.error("Error generating AI title:", err);
+        title = `Chat ${new Date().toLocaleDateString()}`;
+      }
+      
+      // Update the conversation with the new title
+      const updatedConversation = await storage.updateConversationTitle(id, title);
+      
+      if (!updatedConversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      res.json(updatedConversation);
+    } catch (error) {
+      console.error("Error generating title:", error);
+      res.status(500).json({ message: "Failed to generate title." });
     }
   });
 

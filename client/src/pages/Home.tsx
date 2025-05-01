@@ -1,22 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, Link } from 'wouter';
-import { useChat } from '@/lib/hooks';
-import { useAuth } from '@/hooks/useAuth';
+import React, { useState } from 'react';
+import { useLocation } from 'wouter';
+import { Settings, MessageSquare, Menu, Video, Image, AlertCircle } from 'lucide-react';
+import { Link } from 'wouter';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import ChatHistory from '@/components/ChatHistory';
 import ChatInputForm from '@/components/ChatInputForm';
-import ConnectionStatus from '@/components/ConnectionStatus';
 import ConversationSidebar from '@/components/ConversationSidebar';
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { AlertCircle, Settings, Menu, MessageSquare, Image, Video } from "lucide-react";
-import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { nanoid } from 'nanoid';
+import ConnectionStatus from '@/components/ConnectionStatus';
+import { useAuth } from '@/hooks/useAuth';
+import { useChat } from '@/lib/hooks';
 
+// Main home page component
 const Home: React.FC = () => {
   const { user, login, signup, logout } = useAuth();
   const [, navigate] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [conversationId, setConversationId] = useState("default");
   const [errorVisible, setErrorVisible] = useState(true);
   
   const { 
@@ -26,8 +26,9 @@ const Home: React.FC = () => {
     isConnected,
     currentModel, 
     sendMessage,
-    loadMessages
-  } = useChat(conversationId);
+    conversationId,
+    setConversationId
+  } = useChat("default");
   
   // Handle creating a new conversation
   const handleNewConversation = async () => {
@@ -49,9 +50,7 @@ const Home: React.FC = () => {
       
       const newConversation = await response.json();
       setConversationId(newConversation.id);
-      
-      // Load empty conversation (will show welcome message)
-      loadMessages(newConversation.id);
+      // The useEffect in useChat will automatically load messages
       setSidebarOpen(false);
     } catch (error) {
       console.error('Error creating new conversation:', error);
@@ -66,9 +65,8 @@ const Home: React.FC = () => {
       return;
     }
     
+    // Set the conversation ID, which will trigger loading the messages
     setConversationId(id);
-    // Load message history for this conversation
-    loadMessages(id);
     // Close sidebar on mobile after selection
     setSidebarOpen(false);
   };
