@@ -3,15 +3,22 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+  id: text("id").primaryKey(), // Changed to text for Replit Auth user IDs
   username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  email: text("email").unique(),
+  password: text("password"), // Optional now, not used with Replit Auth
   fullName: text("full_name"), // Match existing column name in DB
   location: text("location"),
   interests: text("interests").array(),
   profession: text("profession"),
   pets: text("pets"),
   systemContext: text("system_context"),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  bio: text("bio"),
+  profileImageUrl: text("profile_image_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -69,7 +76,7 @@ export const conversations = pgTable("conversations", {
   title: text("title").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   personality: text("personality").default("default").notNull(),
-  userId: integer("user_id").references(() => users.id),
+  userId: text("user_id").references(() => users.id),
 });
 
 export const insertConversationSchema = createInsertSchema(conversations).pick({
