@@ -1,13 +1,12 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import { Express } from "express";
-import session from "express-session";
+import { Express, Request, Response, NextFunction } from "express";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
+import session from "express-session";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
-import connectPg from "connect-pg-simple";
-import { pool } from "./db";
+import { setupSession, sessionStore } from "./session";
 
 // Extend Express.User to include our user type
 declare global {
@@ -15,14 +14,6 @@ declare global {
     interface User extends SelectUser {}
   }
 }
-
-// Set up PostgreSQL session store
-const PostgresSessionStore = connectPg(session);
-const sessionStore = new PostgresSessionStore({ 
-  pool, 
-  createTableIfMissing: true,
-  tableName: 'session'
-});
 
 // Promisify scrypt
 const scryptAsync = promisify(scrypt);
@@ -44,24 +35,10 @@ async function comparePasswords(supplied: string, stored: string) {
 
 // Set up auth
 export function setupAuth(app: Express) {
-  // Session settings
-  const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || randomBytes(32).toString('hex'),
-    name: 'ai_assistant_session',
-    resave: false,
-    saveUninitialized: false,
-    store: sessionStore,
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
-      sameSite: 'lax'
-    }
-  };
-
-  // Set up sessions and passport
-  app.set("trust proxy", 1);
-  app.use(session(sessionSettings));
+  // Set up session with Postgres backing store
+  setupSession(app);
+  
+  // Set up passport
   app.use(passport.initialize());
   app.use(passport.session());
 

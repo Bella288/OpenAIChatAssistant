@@ -9,12 +9,12 @@ import ChatHistory from '@/components/ChatHistory';
 import ChatInputForm from '@/components/ChatInputForm';
 import ConversationSidebar from '@/components/ConversationSidebar';
 import ConnectionStatus from '@/components/ConnectionStatus';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/use-auth';
 import { useChat } from '@/lib/hooks';
 
 // Main home page component
 const Home: React.FC = () => {
-  const { user, login, signup, logout } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const [, navigate] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [errorVisible, setErrorVisible] = useState(true);
@@ -85,9 +85,6 @@ const Home: React.FC = () => {
         selectedConversationId={conversationId}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
-        isSignedIn={!!user}
-        onSignIn={handleSignIn}
-        onSignOut={logout}
       />
       
       {/* Header */}
