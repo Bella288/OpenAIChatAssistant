@@ -3,39 +3,20 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const users = pgTable("users", {
-  id: text("id").primaryKey(), // Changed to text for Replit Auth user IDs
+  id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
-  email: text("email").unique(),
-  password: text("password"), // Optional now, not used with Replit Auth
+  password: text("password").notNull(),
   fullName: text("full_name"), // Match existing column name in DB
   location: text("location"),
   interests: text("interests").array(),
   profession: text("profession"),
   pets: text("pets"),
   systemContext: text("system_context"),
-  firstName: text("first_name"),
-  lastName: text("last_name"),
-  bio: text("bio"),
-  profileImageUrl: text("profile_image_url"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
-  id: true,
   username: true,
-  email: true,
-});
-
-// Schema for Replit Auth upsert
-export const upsertUserSchema = createInsertSchema(users).pick({
-  id: true,
-  username: true,
-  email: true,
-  firstName: true,
-  lastName: true,
-  bio: true,
-  profileImageUrl: true,
+  password: true,
 });
 
 export const updateUserProfileSchema = createInsertSchema(users)
@@ -46,15 +27,10 @@ export const updateUserProfileSchema = createInsertSchema(users)
     profession: true,
     pets: true,
     systemContext: true,
-    firstName: true,
-    lastName: true,
-    bio: true,
-    profileImageUrl: true,
   })
   .partial(); // Make all fields optional
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
-export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type User = typeof users.$inferSelect;
 
 // Message model for chat
@@ -93,7 +69,7 @@ export const conversations = pgTable("conversations", {
   title: text("title").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   personality: text("personality").default("default").notNull(),
-  userId: text("user_id").references(() => users.id),
+  userId: integer("user_id").references(() => users.id),
 });
 
 export const insertConversationSchema = createInsertSchema(conversations).pick({
@@ -123,7 +99,7 @@ export const conversationSchema = z.object({
   messages: z.array(messageSchema),
   personality: personalityTypeSchema.optional().default("default"),
   conversationId: z.string().optional(),
-  userId: z.string().optional()
+  userId: z.number().optional()
 });
 
 export type ConversationType = z.infer<typeof conversationSchema>;
