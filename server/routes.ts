@@ -267,8 +267,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Get user system context if available
-      let userSystemContext = undefined;
-      if (req.isAuthenticated() && req.user) {
+      let userSystemContext: string | undefined = undefined;
+      if (req.isAuthenticated() && req.user && req.user.systemContext) {
         // If we have a logged-in user, include their system context
         userSystemContext = req.user.systemContext;
         console.log("Including user system context in conversation:", 

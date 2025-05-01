@@ -86,7 +86,7 @@ User context: ${userSystemContext}`;
         
         if (qwenAvailable) {
           currentModel = 'qwen';
-          return await generateFallbackResponse(messages);
+          return await generateFallbackResponse(messages, userSystemContext);
         } else {
           currentModel = 'unavailable';
         }
