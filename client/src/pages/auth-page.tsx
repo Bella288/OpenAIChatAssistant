@@ -45,12 +45,7 @@ export default function AuthPage() {
   const { user, loginMutation, registerMutation, isLoading } = useAuth();
   const { toast } = useToast();
 
-  // If user is already logged in, redirect to home page
-  if (user) {
-    return <Redirect to="/" />;
-  }
-
-  // Login form
+  // Initialize form objects up-front to avoid the hooks rules violation
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -59,7 +54,6 @@ export default function AuthPage() {
     },
   });
 
-  // Register form
   const registerForm = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -68,6 +62,13 @@ export default function AuthPage() {
       confirmPassword: "",
     },
   });
+
+  // If user is already logged in, redirect to home page
+  if (user) {
+    return <Redirect to="/" />;
+  }
+
+  // Form submission handlers
 
   // Form submission handlers
   const onLoginSubmit = async (data: LoginFormValues) => {

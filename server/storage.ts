@@ -13,9 +13,9 @@ import {
 import { db } from "./db";
 import { eq, desc, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
-
-// Storage interface for conversations and messages
 import session from 'express-session';
+import connectPgSimple from 'connect-pg-simple';
+import { pool } from './db';
 
 export interface IStorage {
   // Message operations
@@ -43,7 +43,16 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  sessionStore: session.Store;
+
   constructor() {
+    // Initialize PostgreSQL session store
+    const PgStore = connectPgSimple(session);
+    this.sessionStore = new PgStore({
+      pool,
+      createTableIfMissing: true,
+    });
+
     // Initialize default conversation if it doesn't exist
     this.initializeDefaultConversation();
   }

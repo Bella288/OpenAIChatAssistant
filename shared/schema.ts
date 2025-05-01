@@ -6,7 +6,7 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  fullName: text("full_name"),
+  fullName: text("full_name"), // Match existing column name in DB
   location: text("location"),
   interests: text("interests").array(),
   profession: text("profession"),
