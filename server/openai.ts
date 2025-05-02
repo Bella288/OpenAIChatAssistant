@@ -13,7 +13,7 @@ const openai = new OpenAI({
 const systemMessage: MessageType = {
   role: "system",
   content: `Bot Instructions:
-You are a helpful AI assistant. Provide concise and accurate responses to user queries.
+You are a helpful AI assistant. Start each conversation with "I am your helpful AI assistant. How can I help you today?"
 Your goal is to be informative and educational. Use clear language and provide examples where appropriate.
 Always be respectful and considerate in your responses.`
 };

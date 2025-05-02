@@ -13,8 +13,8 @@ const QWEN_MODEL = "Qwen/Qwen3-235B-A22B";
 const MAX_TOKENS = 512;
 
 // System message to help guide the Qwen model
-const QWEN_SYSTEM_MESSAGE = `Bot Instructions:
-You are a helpful AI assistant. Provide clear, concise responses without showing your thinking process.
+const QWEN_SYSTEM_MESSAGE = `You are a helpful AI assistant. Start each conversation with "I am your helpful AI assistant. How can I help you today?"
+Provide clear, concise responses without showing your thinking process.
 Do not use XML tags like <think> or </think> in your responses.
 Keep your responses informative, friendly, and to the point.`;
 
@@ -22,7 +22,7 @@ Keep your responses informative, friendly, and to the point.`;
 function convertMessages(messages: MessageType[], userSystemContext?: string): Array<{role: string, content: string}> {
   // Create system message with user context if available
   let systemContent = QWEN_SYSTEM_MESSAGE;
-  
+
   // Check if user exists in database with profile information
   if (userSystemContext) {
     // Helper function to safely extract matches
@@ -41,36 +41,36 @@ function convertMessages(messages: MessageType[], userSystemContext?: string): A
       getMatchValue(userSystemContext.match(/I am ([\w\s.']+)/i)),
       getMatchValue(userSystemContext.match(/I'm ([\w\s.']+)/i))
     ].filter(Boolean) as string[];
-    
+
     const locationMatches = [
       getMatchValue(userSystemContext.match(/location(?:\s+is)?(?:\s*:\s*|\s+)([\w\s.,]+)/i)),
       getMatchValue(userSystemContext.match(/(?:I live|I'm from|I reside) in ([\w\s.,]+)/i)),
       getMatchValue(userSystemContext.match(/from ([\w\s.,]+)/i))
     ].filter(Boolean) as string[];
-    
+
     const interestsMatches = [
       getMatchValue(userSystemContext.match(/interests(?:\s+are)?(?:\s*:\s*|\s+)([\w\s,.;{}]+)/i)),
       getMatchValue(userSystemContext.match(/(?:I like|I enjoy|I love) ([\w\s,.;]+)/i))
     ].filter(Boolean) as string[];
-    
+
     const professionMatches = [
       getMatchValue(userSystemContext.match(/profession(?:\s+is)?(?:\s*:\s*|\s+)([\w\s&,.-]+)/i)),
       getMatchValue(userSystemContext.match(/(?:I work as|I am a|I'm a) ([\w\s&,.-]+)/i)),
       getMatchValue(userSystemContext.match(/(?:I'm|I am) (?:a|an) ([\w\s&,.-]+)/i))
     ].filter(Boolean) as string[];
-    
+
     const petsMatches = [
       getMatchValue(userSystemContext.match(/pets?(?:\s+are)?(?:\s*:\s*|\s+)([\w\s,.()]+)/i)),
       getMatchValue(userSystemContext.match(/(?:I have|I own) (?:a pet|pets|a) ([\w\s,.()]+)/i))
     ].filter(Boolean) as string[];
-    
+
     // Take the first successful match for each category
     const userName = nameMatches.length > 0 ? nameMatches[0] : null;
     const userLocation = locationMatches.length > 0 ? locationMatches[0] : null;
     const userInterests = interestsMatches.length > 0 ? interestsMatches[0] : null;
     const userProfession = professionMatches.length > 0 ? professionMatches[0] : null;
     const userPets = petsMatches.length > 0 ? petsMatches[0] : null;
-    
+
     // Fallback to database information directly if we have Bella's profile
     let bellaInfo = '';
     if (userSystemContext.includes("Bella Lawrence") || (userName && userName.includes("Bella"))) {
@@ -83,7 +83,7 @@ function convertMessages(messages: MessageType[], userSystemContext?: string): A
 `;
       console.log("Using Bella's profile information directly");
     }
-    
+
     // Build a clear, structured system message for the model
     let userInfo = '';
     if (userName) userInfo += `- Your name is ${userName}\n`;
@@ -91,10 +91,10 @@ function convertMessages(messages: MessageType[], userSystemContext?: string): A
     if (userInterests) userInfo += `- Your interests include ${userInterests}\n`;
     if (userProfession) userInfo += `- Your profession is ${userProfession}\n`;
     if (userPets) userInfo += `- You have pets: ${userPets}\n`;
-    
+
     // Use Bella's data directly if available, otherwise use what we extracted
     const profileInfo = bellaInfo || userInfo || userSystemContext;
-    
+
     // Build a more direct and instructive system message
     systemContent = `${QWEN_SYSTEM_MESSAGE}
 
@@ -108,7 +108,7 @@ INSTRUCTIONS:
 4. Answer as if you've always known this information - don't say "according to your profile" or similar phrases.
 
 REMEMBER: You already know the user's name and details. ALWAYS use this information when asked.`;
-    
+
     // Special handling for "what's my name" type questions to ensure it works
     const hasNameQuestion = messages.some(msg => {
       const content = msg.content.toLowerCase();
@@ -119,27 +119,27 @@ REMEMBER: You already know the user's name and details. ALWAYS use this informat
         content.includes("who am i")
       );
     });
-    
+
     if (hasNameQuestion) {
       console.log("Detected name question - ensuring proper response");
       // Add extra reminder for name questions
       systemContent += `\n\nIMPORTANT REMINDER: The user has asked about their name. Their name is ${userName || "Bella Lawrence"}. DO NOT say you don't know their name.`;
     }
-    
+
     console.log("Including enhanced user system context in fallback chat");
     if (userName) console.log(`Extracted user name: ${userName}`);
     if (userLocation) console.log(`Extracted user location: ${userLocation}`);
   }
-  
+
   // Start with our system message
   const formattedMessages = [{
     role: "system",
     content: systemContent
   }];
-  
+
   // Filter out any existing system messages from the input
   const compatibleMessages = messages.filter(msg => msg.role !== 'system');
-  
+
   // If no messages are left, add a default user message
   if (compatibleMessages.length === 0) {
     formattedMessages.push({
@@ -148,7 +148,7 @@ REMEMBER: You already know the user's name and details. ALWAYS use this informat
     });
     return formattedMessages;
   }
-  
+
   // Make sure the last message is from the user
   const lastMessage = compatibleMessages[compatibleMessages.length - 1];
   if (lastMessage.role !== 'user') {
@@ -158,13 +158,13 @@ REMEMBER: You already know the user's name and details. ALWAYS use this informat
       content: "Can you help me with this?"
     });
   }
-  
+
   // Add all the compatible messages
   formattedMessages.push(...compatibleMessages.map(msg => ({
     role: msg.role,
     content: msg.content
   })));
-  
+
   return formattedMessages;
 }
 
@@ -172,10 +172,10 @@ REMEMBER: You already know the user's name and details. ALWAYS use this informat
 export async function generateFallbackResponse(messages: MessageType[], userSystemContext?: string): Promise<string> {
   try {
     console.log("Generating fallback response using Qwen model");
-    
+
     // Convert messages to the format expected by the Hugging Face API
     const formattedMessages = convertMessages(messages, userSystemContext);
-    
+
     // Make the API call to the Qwen model via Novita
     const response = await huggingFaceClient.chatCompletion({
       provider: "novita",
@@ -183,27 +183,27 @@ export async function generateFallbackResponse(messages: MessageType[], userSyst
       messages: formattedMessages,
       max_tokens: MAX_TOKENS,
     });
-    
+
     // Extract and return the generated text
     if (response.choices && response.choices.length > 0 && response.choices[0].message) {
       // Clean up the response - remove any thinking process or XML-like tags
       let content = response.choices[0].message.content || '';
-      
+
       // Remove the <think> sections that might appear in the response
       content = content.replace(/<think>[\s\S]*?<\/think>/g, '');
-      
+
       // Remove any other XML-like tags
       content = content.replace(/<[^>]*>/g, '');
-      
+
       // Clean up any excessive whitespace
       content = content.replace(/^\s+|\s+$/g, '');
       content = content.replace(/\n{3,}/g, '\n\n');
-      
+
       // If content is empty after cleanup, provide a default message
       if (!content.trim()) {
         content = "I'm sorry, I couldn't generate a proper response.";
       }
-      
+
       // Add a note that this is using the fallback model
       return `${content}\n\n(Note: I'm currently operating in fallback mode using the Qwen model because the OpenAI API is unavailable)`;
     } else {
@@ -211,7 +211,7 @@ export async function generateFallbackResponse(messages: MessageType[], userSyst
     }
   } catch (error) {
     console.error("Error generating response with Qwen model:", error);
-    
+
     // If the Qwen model fails, return a simple fallback message
     return "I apologize, but I'm currently experiencing technical difficulties with both primary and fallback AI services. Please try again later.";
   }
