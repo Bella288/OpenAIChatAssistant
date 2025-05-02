@@ -1,9 +1,9 @@
+
 import { createContext, ReactNode, useContext } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getQueryFn, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
-// Types
 interface User {
   id: number;
   username: string;
@@ -28,12 +28,12 @@ type AuthContextType = {
 export const AuthContext = createContext<AuthContextType | null>(null);
 
 function loginWithReplit() {
-  const h = 500;
-  const w = 350;
-  const left = screen.width / 2 - w / 2;
-  const top = screen.height / 2 - h / 2;
-
   return new Promise<void>((resolve) => {
+    const h = 500;
+    const w = 350;
+    const left = screen.width / 2 - w / 2;
+    const top = screen.height / 2 - h / 2;
+
     const authWindow = window.open(
       `https://replit.com/auth_with_repl_site?domain=${location.host}`,
       "_blank",
@@ -116,38 +116,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/logout", { 
+      const res = await fetch("/api/logout", {
         method: "POST",
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        credentials: "include",
       });
       if (!res.ok) {
         throw new Error("Logout failed");
       }
-      await res.json();
-      // Force clear session storage and cookies
-      sessionStorage.clear();
-      localStorage.clear();
-      document.cookie.split(";").forEach((c) => {
-        document.cookie = c
-          .replace(/^ +/, "")
-          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
-      });
-      return;
+      return res.json();
     },
     onSuccess: () => {
       // Clear all client state
       queryClient.clear();
       queryClient.removeQueries();
       queryClient.setQueryData(["/api/user"], null);
-      // Hard reload to clear all state
-      window.location.replace("/auth");
-      toast({
-        title: "Logged out",
-        description: "You've been successfully logged out.",
-      });
+      
+      // Force reload to clear state and trigger Replit auth logout
+      window.location.href = "/auth";
     },
     onError: (error: Error) => {
       toast({

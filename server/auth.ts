@@ -96,19 +96,24 @@ export function setupAuth(app: Express) {
 
   // Logout route
   app.post("/api/logout", (req, res, next) => {
+    // Save user context before logout if needed
+    const userId = req.user?.id;
+    
     req.logout((err) => {
       if (err) return next(err);
+      
+      // Destroy session
       req.session.destroy((err) => {
         if (err) return next(err);
-        // Clear all cookies
+        
+        // Clear session cookie
         res.clearCookie('connect.sid', {
           path: '/',
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
           sameSite: 'lax'
         });
-        // Ensure context is cleared
-        req.user = null;
+        
         res.json({ success: true });
       });
     });
