@@ -143,7 +143,7 @@ export default function AuthPage() {
               {activeTab === "login" ? (
                 <>
                   Don't have an account?{" "}
-                  <Button variant="link" className="p-0" onClick={() => setActiveTab("register")}>
+                  <Button variant="link" className="p-0" onClick={() => window.location.href = '/register'}>
                     Sign up
                   </Button>
                 </>
