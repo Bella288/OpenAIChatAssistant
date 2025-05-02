@@ -20,11 +20,12 @@ type AuthContextType = {
   user: User | null;
   isLoading: boolean;
   error: Error | null;
-  login: () => void;
+  login: () => Promise<void>;
   logout: () => Promise<void>;
+  loginMutation: any;
+  registerMutation: any;
 };
 
-// Create context
 export const AuthContext = createContext<AuthContextType | null>(null);
 
 function loginWithReplit() {
@@ -51,11 +52,9 @@ function loginWithReplit() {
   });
 }
 
-// Auth provider component
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   
-  // Get current user
   const {
     data: user,
     error,
@@ -66,32 +65,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     retry: false,
   });
 
-  // Login mutation
-  const login = async () => {
-    try {
+  const loginMutation = useMutation({
+    mutationFn: async () => {
       await loginWithReplit();
-      // After Replit auth, authenticate with our backend
       const res = await fetch("/api/auth/replit");
       if (!res.ok) {
         throw new Error("Authentication failed");
       }
-      const userData = await res.json();
+      return res.json();
+    },
+    onSuccess: (userData) => {
       queryClient.setQueryData(["/api/user"], userData);
       toast({
         title: "Welcome!",
         description: "You've successfully logged in.",
       });
-    } catch (error: any) {
+    },
+    onError: (error: Error) => {
       toast({
         title: "Login failed",
         description: error.message,
         variant: "destructive",
       });
-      throw error;
-    }
-  };
+    },
+  });
 
-  // Logout mutation
+  const registerMutation = useMutation({
+    mutationFn: async () => {
+      await loginWithReplit();
+      const res = await fetch("/api/auth/replit");
+      if (!res.ok) {
+        throw new Error("Registration failed");
+      }
+      return res.json();
+    },
+    onSuccess: (userData) => {
+      queryClient.setQueryData(["/api/user"], userData);
+      toast({
+        title: "Welcome!",
+        description: "Your account has been created successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Registration failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const logoutMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch("/api/logout", { method: "POST" });
@@ -122,8 +145,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: user || null,
         isLoading,
         error,
-        login,
+        login: loginMutation.mutateAsync,
         logout: logoutMutation.mutateAsync,
+        loginMutation,
+        registerMutation,
       }}
     >
       {children}
@@ -131,7 +156,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Hook for using the auth context
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
