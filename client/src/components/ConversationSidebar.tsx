@@ -64,12 +64,8 @@ const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   };
   
   // Sign out
-  const handleSignOut = async () => {
-    try {
-      await logoutMutation.mutateAsync();
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
+  const handleSignOut = () => {
+    setLocation('/logout');
   };
   
   // Start editing a conversation title
