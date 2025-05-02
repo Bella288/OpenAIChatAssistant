@@ -40,6 +40,9 @@ export function setupAuth(app: Express) {
     try {
       const userId = req.headers["x-replit-user-id"];
       const username = req.headers["x-replit-user-name"];
+      const profileImage = req.headers["x-replit-user-profile-image"];
+      const roles = req.headers["x-replit-user-roles"];
+      const teams = req.headers["x-replit-user-teams"];
 
       if (!userId || !username) {
         return res.status(401).json({ message: "Not authenticated with Replit" });
@@ -51,8 +54,16 @@ export function setupAuth(app: Express) {
       if (!user) {
         user = await storage.createUser({
           username: username as string,
-          // Using Replit user ID as password since we don't need passwords with Replit Auth
-          password: userId as string,
+          password: userId as string, // Using Replit user ID as password since we don't need passwords
+          system_context: `A chat with ${username}`,
+          full_name: username as string,
+          interests: roles ? (roles as string).split(',') : [],
+        });
+      } else {
+        // Update user profile with latest Replit data
+        user = await storage.updateUserProfile(user.id, {
+          full_name: username as string,
+          interests: roles ? (roles as string).split(',') : [],
         });
       }
 
@@ -96,7 +107,7 @@ export function setupAuth(app: Express) {
     try {
       const userId = (req.user as SelectUser).id;
       const updatedUser = await storage.updateUserProfile(userId, req.body);
-      
+
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
