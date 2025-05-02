@@ -118,15 +118,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async () => {
       const res = await fetch("/api/logout", { 
         method: "POST",
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
       if (!res.ok) {
         throw new Error("Logout failed");
       }
+      return res.json();
     },
     onSuccess: () => {
       queryClient.clear(); // Clear all queries
+      queryClient.resetQueries(); // Reset all queries
       queryClient.removeQueries(); // Remove all queries from cache
+      queryClient.setQueryData(["/api/user"], null); // Clear user data
       window.location.href = "/auth"; // Redirect to auth page
       toast({
         title: "Logged out",
