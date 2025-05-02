@@ -1,10 +1,7 @@
+
 import { createContext, ReactNode, useContext } from "react";
-import {
-  useQuery,
-  useMutation,
-  UseMutationResult,
-} from "@tanstack/react-query";
-import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { getQueryFn, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 // Types
@@ -17,30 +14,42 @@ interface User {
   profession?: string | null;
   pets?: string | null;
   systemContext?: string | null;
-  // We don't include password for security
 }
-
-type LoginData = {
-  username: string;
-  password: string;
-};
-
-type RegisterData = {
-  username: string;
-  password: string;
-};
 
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
   error: Error | null;
-  loginMutation: UseMutationResult<User, Error, LoginData>;
-  registerMutation: UseMutationResult<User, Error, RegisterData>;
-  logoutMutation: UseMutationResult<void, Error, void>;
+  login: () => void;
+  logout: () => Promise<void>;
 };
 
 // Create context
 export const AuthContext = createContext<AuthContextType | null>(null);
+
+function loginWithReplit() {
+  const h = 500;
+  const w = 350;
+  const left = screen.width / 2 - w / 2;
+  const top = screen.height / 2 - h / 2;
+
+  return new Promise<void>((resolve) => {
+    const authWindow = window.open(
+      `https://replit.com/auth_with_repl_site?domain=${location.host}`,
+      "_blank",
+      `modal=yes,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=no,resizable=no,copyhistory=no,width=${w},height=${h},top=${top},left=${left}`
+    );
+
+    window.addEventListener("message", function authComplete(e) {
+      if (e.data !== "auth_complete") {
+        return;
+      }
+      window.removeEventListener("message", authComplete);
+      authWindow?.close();
+      resolve();
+    });
+  });
+}
 
 // Auth provider component
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -58,53 +67,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   // Login mutation
-  const loginMutation = useMutation({
-    mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
+  const login = async () => {
+    try {
+      await loginWithReplit();
+      // After Replit auth, authenticate with our backend
+      const res = await fetch("/api/auth/replit");
       if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Login failed");
+        throw new Error("Authentication failed");
       }
-      return await res.json();
-    },
-    onSuccess: (user: User) => {
-      queryClient.setQueryData(["/api/user"], user);
-    },
-    onError: (error: Error) => {
+      const userData = await res.json();
+      queryClient.setQueryData(["/api/user"], userData);
+      toast({
+        title: "Welcome!",
+        description: "You've successfully logged in.",
+      });
+    } catch (error: any) {
       toast({
         title: "Login failed",
         description: error.message,
         variant: "destructive",
       });
-    },
-  });
-
-  // Registration mutation
-  const registerMutation = useMutation({
-    mutationFn: async (userData: RegisterData) => {
-      const res = await apiRequest("POST", "/api/register", userData);
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Registration failed");
-      }
-      return await res.json();
-    },
-    onSuccess: (user: User) => {
-      queryClient.setQueryData(["/api/user"], user);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Registration failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+      throw error;
+    }
+  };
 
   // Logout mutation
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/logout");
+      const res = await fetch("/api/logout", { method: "POST" });
       if (!res.ok) {
         throw new Error("Logout failed");
       }
@@ -112,6 +102,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      toast({
+        title: "Logged out",
+        description: "You've been successfully logged out.",
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -128,9 +122,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: user || null,
         isLoading,
         error,
-        loginMutation,
-        registerMutation,
-        logoutMutation,
+        login,
+        logout: logoutMutation.mutateAsync,
       }}
     >
       {children}
