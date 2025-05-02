@@ -28,12 +28,12 @@ type AuthContextType = {
 export const AuthContext = createContext<AuthContextType | null>(null);
 
 function loginWithReplit() {
-  return new Promise<void>((resolve) => {
-    const h = 500;
-    const w = 350;
-    const left = screen.width / 2 - w / 2;
-    const top = screen.height / 2 - h / 2;
+  const h = 500;
+  const w = 350;
+  const left = screen.width / 2 - w / 2;
+  const top = screen.height / 2 - h / 2;
 
+  return new Promise<void>((resolve) => {
     const authWindow = window.open(
       `https://replit.com/auth_with_repl_site?domain=${location.host}`,
       "_blank",
@@ -120,19 +120,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: "POST",
         credentials: "include",
       });
+      
       if (!res.ok) {
         throw new Error("Logout failed");
       }
-      return res.json();
+      
+      // Force a full page reload to clear Replit auth state
+      window.location.href = "/auth";
+      return null;
     },
     onSuccess: () => {
-      // Clear all client state
       queryClient.clear();
       queryClient.removeQueries();
       queryClient.setQueryData(["/api/user"], null);
-      
-      // Force reload to clear state and trigger Replit auth logout
-      window.location.href = "/auth";
     },
     onError: (error: Error) => {
       toast({

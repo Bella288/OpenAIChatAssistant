@@ -95,28 +95,18 @@ export function setupAuth(app: Express) {
   });
 
   // Logout route
-  app.post("/api/logout", (req, res, next) => {
-    // Save user context before logout if needed
-    const userId = req.user?.id;
-    
-    req.logout((err) => {
-      if (err) return next(err);
-      
-      // Destroy session
+  app.post("/api/logout", (req, res) => {
+    if (req.session) {
       req.session.destroy((err) => {
-        if (err) return next(err);
-        
-        // Clear session cookie
-        res.clearCookie('connect.sid', {
-          path: '/',
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: 'lax'
-        });
-        
-        res.json({ success: true });
+        if (err) {
+          console.error("Session destruction error:", err);
+        }
+        res.clearCookie('connect.sid');
+        res.status(200).json({ success: true });
       });
-    });
+    } else {
+      res.status(200).json({ success: true });
+    }
   });
 
   // Update user profile
