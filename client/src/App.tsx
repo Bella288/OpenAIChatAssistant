@@ -10,12 +10,14 @@ import ImageGenPage from "@/pages/ImageGenPage";
 import VideoGenPage from "@/pages/VideoGenPage";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
+import LogoutPage from "@/pages/logout"; // Import the new component
 
 function Router() {
   return (
     <Switch>
-      <ProtectedRoute path="/" component={Home} />
       <Route path="/auth" component={AuthPage} />
+      <Route path="/logout" component={LogoutPage} />
+      <ProtectedRoute path="/" component={Home} />
       <ProtectedRoute path="/image-generator" component={ImageGenPage} />
       <ProtectedRoute path="/video-generator" component={VideoGenPage} />
       <Route component={NotFound} />
