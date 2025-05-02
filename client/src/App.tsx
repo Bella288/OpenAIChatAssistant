@@ -10,7 +10,7 @@ import ImageGenPage from "@/pages/ImageGenPage";
 import VideoGenPage from "@/pages/VideoGenPage";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
-import LogoutPage from "@/pages/logout"; // Import the new component
+import LogoutPage from "@/pages/logout-page"; // Import the logout page component
 
 function Router() {
   return (
