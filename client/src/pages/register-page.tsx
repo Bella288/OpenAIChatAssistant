@@ -8,9 +8,12 @@ import { Button } from "@/components/ui/button";
 export default function RegisterPage() {
   const { registerMutation } = useAuth();
 
+  const [, setLocation] = useLocation();
+  
   const handleRegister = async () => {
     try {
       await registerMutation.mutateAsync();
+      setLocation('/'); // Redirect to home page after successful registration
     } catch (error) {
       console.error("Registration failed:", error);
     }
