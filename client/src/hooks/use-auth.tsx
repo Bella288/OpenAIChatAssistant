@@ -116,13 +116,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/logout", { method: "POST" });
+      const res = await fetch("/api/logout", { 
+        method: "POST",
+        credentials: 'include'
+      });
       if (!res.ok) {
         throw new Error("Logout failed");
       }
     },
     onSuccess: () => {
       queryClient.clear(); // Clear all queries
+      queryClient.removeQueries(); // Remove all queries from cache
       window.location.href = "/auth"; // Redirect to auth page
       toast({
         title: "Logged out",

@@ -211,6 +211,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const messages = await storage.getMessages(id);
+      
+      // If user is authenticated, include their system context
+      if (req.isAuthenticated() && req.user) {
+        const userContext = {
+          role: "system",
+          content: req.user.systemContext || `Chat with ${req.user.username}`,
+          conversationId: id,
+          createdAt: new Date()
+        };
+        messages.unshift(userContext);
+      }
+      
       res.json(messages);
     } catch (error) {
       console.error("Error fetching messages:", error);

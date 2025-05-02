@@ -20,8 +20,13 @@ export function useChat(initialConversationId = "default") {
   const loadMessages = useCallback(async (convId: string) => {
     try {
       setIsLoading(true);
+      setError(null);
       const response = await fetch(`/api/conversations/${convId}/messages`, {
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
       });
       
       if (!response.ok) {

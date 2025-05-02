@@ -54,16 +54,20 @@ export function setupAuth(app: Express) {
       if (!user) {
         user = await storage.createUser({
           username: username as string,
-          password: userId as string, // Using Replit user ID as password since we don't need passwords
-          system_context: `A chat with ${username}`,
+          password: userId as string,
+          system_context: `A chat with ${username}. User roles: ${roles || 'none'}. Teams: ${teams || 'none'}.`,
           full_name: username as string,
           interests: roles ? (roles as string).split(',') : [],
+          location: '', // Add default empty values for profile fields
+          profession: '',
+          pets: ''
         });
       } else {
         // Update user profile with latest Replit data
         user = await storage.updateUserProfile(user.id, {
           full_name: username as string,
           interests: roles ? (roles as string).split(',') : [],
+          system_context: `A chat with ${username}. User roles: ${roles || 'none'}. Teams: ${teams || 'none'}.`
         });
       }
 
