@@ -90,9 +90,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const conversationId = nanoid();
       
-      // Use first message to generate title with AI
+      // Generate title based on user's message
       let title = req.body.title;
-      if ((!title || title === "New Conversation") && req.body.firstMessage) {
+      if (!title || title === "New Conversation") {
         try {
           const openaiClient = new OpenAI();
           const response = await openaiClient.chat.completions.create({
@@ -100,15 +100,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             messages: [
               {
                 role: "system",
-                content: "Generate a brief, descriptive title (3-5 words) for a conversation that starts with this message. Respond with just the title."
+                content: "You are a title generator. Create a concise, descriptive title (2-4 words) that summarizes the following message. Respond with just the title."
               },
               {
                 role: "user", 
-                content: req.body.firstMessage
+                content: req.body.firstMessage || "New chat conversation"
               }
             ],
-            max_tokens: 20,
-            temperature: 0.7
+            max_tokens: 15,
+            temperature: 0.6
           });
           
           title = response.choices[0].message.content?.trim() || "New Conversation";
