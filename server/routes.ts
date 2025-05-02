@@ -90,17 +90,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const conversationId = nanoid();
       
-      // Generate a timestamp-based default title
+      // Use first message to generate title with AI
       let title = req.body.title;
-      if (!title || title === "New Conversation") {
-        const date = new Date();
-        title = `Conversation ${date.toLocaleString('en-US', { 
-          month: 'short', 
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true
-        })}`;
+      if ((!title || title === "New Conversation") && req.body.firstMessage) {
+        try {
+          const openaiClient = new OpenAI();
+          const response = await openaiClient.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [
+              {
+                role: "system",
+                content: "Generate a brief, descriptive title (3-5 words) for a conversation that starts with this message. Respond with just the title."
+              },
+              {
+                role: "user", 
+                content: req.body.firstMessage
+              }
+            ],
+            max_tokens: 20,
+            temperature: 0.7
+          });
+          
+          title = response.choices[0].message.content?.trim() || "New Conversation";
+        } catch (err) {
+          console.error("Error generating AI title:", err);
+          title = "New Conversation";
+        }
       }
       
       // Include user ID if authenticated
