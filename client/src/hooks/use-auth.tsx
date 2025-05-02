@@ -126,14 +126,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!res.ok) {
         throw new Error("Logout failed");
       }
-      return res.json();
+      await res.json();
+      // Force clear session storage and cookies
+      sessionStorage.clear();
+      localStorage.clear();
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+      return;
     },
     onSuccess: () => {
-      queryClient.clear(); // Clear all queries
-      queryClient.resetQueries(); // Reset all queries
-      queryClient.removeQueries(); // Remove all queries from cache
-      queryClient.setQueryData(["/api/user"], null); // Clear user data
-      window.location.href = "/auth"; // Redirect to auth page
+      // Clear all client state
+      queryClient.clear();
+      queryClient.removeQueries();
+      queryClient.setQueryData(["/api/user"], null);
+      // Hard reload to clear all state
+      window.location.replace("/auth");
       toast({
         title: "Logged out",
         description: "You've been successfully logged out.",

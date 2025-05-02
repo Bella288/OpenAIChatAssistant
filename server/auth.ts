@@ -100,7 +100,15 @@ export function setupAuth(app: Express) {
       if (err) return next(err);
       req.session.destroy((err) => {
         if (err) return next(err);
-        res.clearCookie('connect.sid');
+        // Clear all cookies
+        res.clearCookie('connect.sid', {
+          path: '/',
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: 'lax'
+        });
+        // Ensure context is cleared
+        req.user = null;
         res.json({ success: true });
       });
     });
