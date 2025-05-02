@@ -13,15 +13,19 @@ const QWEN_MODEL = "Qwen/Qwen3-235B-A22B";
 const MAX_TOKENS = 512;
 
 // System message to help guide the Qwen model
-const QWEN_SYSTEM_MESSAGE = `You are a helpful AI assistant. Start each conversation with "I am your helpful AI assistant. How can I help you today?"
-Provide clear, concise responses without showing your thinking process.
-Do not use XML tags like <think> or </think> in your responses.
-Keep your responses informative, friendly, and to the point.`;
+const QWEN_SYSTEM_MESSAGE = `I am your helpful AI assistant. Start each conversation with "I am your helpful AI assistant. How can I help you today?"
+
+Bot Instructions: {botInstructions}
+
+Remember:
+1. Do not use XML tags in responses
+2. Keep responses clear and concise
+3. Be informative and friendly`;
 
 // Convert our message format to the format expected by the Hugging Face API
-function convertMessages(messages: MessageType[], userSystemContext?: string): Array<{role: string, content: string}> {
+function convertMessages(messages: MessageType[], userSystemContext?: string, botInstructions?: string): Array<{role: string, content: string}> {
   // Create system message with user context if available
-  let systemContent = QWEN_SYSTEM_MESSAGE;
+  let systemContent = QWEN_SYSTEM_MESSAGE.replace('{botInstructions}', botInstructions || '');
 
   // Check if user exists in database with profile information
   if (userSystemContext) {
@@ -96,7 +100,7 @@ function convertMessages(messages: MessageType[], userSystemContext?: string): A
     const profileInfo = bellaInfo || userInfo || userSystemContext;
 
     // Build a more direct and instructive system message
-    systemContent = `${QWEN_SYSTEM_MESSAGE}
+    systemContent = `${systemContent}
 
 User Details:
 ${profileInfo}
@@ -169,12 +173,12 @@ REMEMBER: You already know the user's name and details. ALWAYS use this informat
 }
 
 // Main function to generate a fallback chat response using Qwen
-export async function generateFallbackResponse(messages: MessageType[], userSystemContext?: string): Promise<string> {
+export async function generateFallbackResponse(messages: MessageType[], userSystemContext?: string, botInstructions?: string): Promise<string> {
   try {
     console.log("Generating fallback response using Qwen model");
 
     // Convert messages to the format expected by the Hugging Face API
-    const formattedMessages = convertMessages(messages, userSystemContext);
+    const formattedMessages = convertMessages(messages, userSystemContext, botInstructions);
 
     // Make the API call to the Qwen model via Novita
     const response = await huggingFaceClient.chatCompletion({

@@ -12,10 +12,14 @@ const openai = new OpenAI({
 
 const systemMessage: MessageType = {
   role: "system",
-  content: `Bot Instructions:
-You are a helpful AI assistant. Start each conversation with "I am your helpful AI assistant. How can I help you today?"
-Your goal is to be informative and educational. Use clear language and provide examples where appropriate.
-Always be respectful and considerate in your responses.`
+  content: `I am your helpful AI assistant. Start each conversation with "I am your helpful AI assistant. How can I help you today?"
+
+Bot Instructions: {botInstructions}
+
+Remember:
+1. Do not use XML tags in responses
+2. Always provide accurate, helpful information
+3. Be respectful and considerate`
 };
 
 // Flag to track current model in use
