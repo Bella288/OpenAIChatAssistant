@@ -16,6 +16,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
+      <Route path="/register" component={RegisterPage} />
       <Route path="/logout" component={LogoutPage} />
       <ProtectedRoute path="/" component={Home} />
       <ProtectedRoute path="/image-generator" component={ImageGenPage} />
