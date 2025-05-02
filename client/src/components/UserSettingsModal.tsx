@@ -235,6 +235,28 @@ export default function UserSettingsModal({
                 <h3 className="text-lg font-medium">AI Assistant Preferences</h3>
               </div>
 
+              <FormField
+                control={form.control}
+                name="additionalInfo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Additional Information</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Add any additional information about yourself that you'd like the AI to know"
+                        className="min-h-[100px]"
+                        {...field}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      This information will be included in your AI context
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
                   <FormLabel className="text-base">System Context</FormLabel>
@@ -249,6 +271,7 @@ export default function UserSettingsModal({
                       const interests = form.getValues("interests");
                       const profession = form.getValues("profession");
                       const pets = form.getValues("pets");
+                      const additionalInfo = form.getValues("additionalInfo");
                       
                       // Format profile information in a structured way
                       let profileInfo = "";
@@ -257,6 +280,7 @@ export default function UserSettingsModal({
                       if (interests && interests.length > 0) profileInfo += `interests: ${interests.join(", ")}\n`;
                       if (profession) profileInfo += `profession: ${profession}\n`;
                       if (pets) profileInfo += `pets: ${pets}\n`;
+                      if (additionalInfo) profileInfo += `additional_info: ${additionalInfo}\n`;
                       
                       // Get existing context
                       const currentContext = form.getValues("systemContext") || "";
