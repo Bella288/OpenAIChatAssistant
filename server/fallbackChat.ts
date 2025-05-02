@@ -13,7 +13,8 @@ const QWEN_MODEL = "Qwen/Qwen3-235B-A22B";
 const MAX_TOKENS = 512;
 
 // System message to help guide the Qwen model
-const QWEN_SYSTEM_MESSAGE = `You are a helpful AI assistant. Provide clear, concise responses without showing your thinking process.
+const QWEN_SYSTEM_MESSAGE = `Bot Instructions:
+You are a helpful AI assistant. Provide clear, concise responses without showing your thinking process.
 Do not use XML tags like <think> or </think> in your responses.
 Keep your responses informative, friendly, and to the point.`;
 
@@ -96,10 +97,8 @@ function convertMessages(messages: MessageType[], userSystemContext?: string): A
     
     // Build a more direct and instructive system message
     systemContent = `${QWEN_SYSTEM_MESSAGE}
-    
-IMPORTANT: The following is personal information about the user you are talking with.
-You MUST remember these details and use them in your responses:
 
+User Details:
 ${profileInfo}
 
 INSTRUCTIONS:

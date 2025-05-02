@@ -12,9 +12,10 @@ const openai = new OpenAI({
 
 const systemMessage: MessageType = {
   role: "system",
-  content: `You are a helpful AI assistant. Provide concise and accurate responses to user queries. 
-  Your goal is to be informative and educational. Use clear language and provide examples where appropriate.
-  Always be respectful and considerate in your responses.`
+  content: `Bot Instructions:
+You are a helpful AI assistant. Provide concise and accurate responses to user queries.
+Your goal is to be informative and educational. Use clear language and provide examples where appropriate.
+Always be respectful and considerate in your responses.`
 };
 
 // Flag to track current model in use
@@ -24,17 +25,17 @@ export async function generateChatResponse(messages: MessageType[], userSystemCo
   try {
     // Check if we can use OpenAI API
     const openAIAvailable = await canUseOpenAI();
-    
+
     // If OpenAI API is not available, check if Qwen is available
     if (!openAIAvailable) {
       const qwenAvailable = await canUseQwen();
-      
+
       if (qwenAvailable) {
         if (currentModel !== 'qwen') {
           console.log("Switching to Qwen model as fallback");
           currentModel = 'qwen';
         }
-        
+
         // Use Qwen fallback
         return await generateFallbackResponse(messages, userSystemContext);
       } else {
@@ -43,16 +44,16 @@ export async function generateChatResponse(messages: MessageType[], userSystemCo
         throw new Error("Both OpenAI and Qwen models are unavailable. Please check your API keys.");
       }
     }
-    
+
     // If we get here, we're using OpenAI
     if (currentModel !== 'openai') {
       console.log("Using OpenAI model");
       currentModel = 'openai';
     }
-    
+
     // Create the system message, incorporating user context if available
     let enhancedSystemMessage = { ...systemMessage };
-    
+
     if (userSystemContext) {
       // Process the system context to extract key user information for explicit instructions
       const nameMatch = userSystemContext.match(/name(?:\s+is)?(?:\s*:\s*|\s+)([\w\s.']+)/i);
@@ -60,7 +61,7 @@ export async function generateChatResponse(messages: MessageType[], userSystemCo
       const interestsMatch = userSystemContext.match(/interests(?:\s+are)?(?:\s*:\s*|\s+)([\w\s,.;]+)/i);
       const professionMatch = userSystemContext.match(/profession(?:\s+is)?(?:\s*:\s*|\s+)([\w\s&,.-]+)/i);
       const petsMatch = userSystemContext.match(/pets?(?:\s+are)?(?:\s*:\s*|\s+)([\w\s,.]+)/i);
-      
+
       // Build structured user profile information
       let userInfo = '';
       if (nameMatch) userInfo += `- Name: ${nameMatch[1].trim()}\n`;
@@ -68,11 +69,11 @@ export async function generateChatResponse(messages: MessageType[], userSystemCo
       if (interestsMatch) userInfo += `- Interests: ${interestsMatch[1].trim()}\n`;
       if (professionMatch) userInfo += `- Profession: ${professionMatch[1].trim()}\n`;
       if (petsMatch) userInfo += `- Pets: ${petsMatch[1].trim()}\n`;
-      
+
       // Append the user's custom context to the system message in a more structured way
       enhancedSystemMessage.content = `${systemMessage.content}
 
-USER PROFILE INFORMATION:
+User Details:
 ${userInfo || userSystemContext}
 
 IMPORTANT: You must remember these user details and incorporate them naturally in your responses when relevant. 
@@ -81,13 +82,13 @@ Never say you don't know their personal details if they're listed above. Answer 
 
 Original system context provided by user:
 ${userSystemContext}`;
-      
+
       console.log("Including enhanced user system context in OpenAI chat");
     }
-    
+
     // Always include system message at the beginning
     const conversationWithSystem = [enhancedSystemMessage, ...messages];
-    
+
     // Make API call to OpenAI
     const response = await openai.chat.completions.create({
       model: OPENAI_MODEL,
@@ -100,14 +101,14 @@ ${userSystemContext}`;
     return response.choices[0].message.content || "I'm sorry, I couldn't generate a response.";
   } catch (error: any) {
     console.error("AI Model error:", error);
-    
+
     // If we have an OpenAI error, try using Qwen as fallback
     if (currentModel === 'openai') {
       console.log("OpenAI API error, attempting to use Qwen fallback");
-      
+
       try {
         const qwenAvailable = await canUseQwen();
-        
+
         if (qwenAvailable) {
           currentModel = 'qwen';
           return await generateFallbackResponse(messages, userSystemContext);
@@ -119,7 +120,7 @@ ${userSystemContext}`;
         currentModel = 'unavailable';
       }
     }
-    
+
     // If we've gotten this far, all fallbacks have failed, provide a helpful error
     if (error.response) {
       // API returned an error response
