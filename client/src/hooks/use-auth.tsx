@@ -122,8 +122,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     onSuccess: () => {
-      queryClient.setQueryData(["/api/user"], null);
-      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      queryClient.clear(); // Clear all queries
+      window.location.href = "/auth"; // Redirect to auth page
       toast({
         title: "Logged out",
         description: "You've been successfully logged out.",
