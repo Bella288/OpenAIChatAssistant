@@ -7,12 +7,20 @@ channel = "stable-24_05"
 
 [deployment]
 deploymentTarget = "autoscale"
-build = ["npm", "run", "build"]
-run = ["npm", "run", "start"]
+build = ["sh", "-c", "npm run build"]
+run = ["sh", "-c", "NODE_ENV=production tsx server/index.ts"]
 
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 9005
+externalPort = 3000
+
+[[ports]]
+localPort = 9006
+externalPort = 3001
 
 [workflows]
 runButton = "Project"
